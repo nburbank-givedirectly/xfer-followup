@@ -122,7 +122,7 @@ def get_base_data():
     return df
 
 
-# Limit to 1 reponse per recpt
+# Limit to 1 response per recipient
 
 
 def split_and_ohe_str_lst(df, col, category_aggregations, agg=True):
@@ -188,6 +188,34 @@ def gen_results_md(resutls, name):
     with open(f"output/output_{name}.md", "w") as file:
         file.write(output_str)
 
+def prop_tbl_by_cut(
+        cnts, cut_col, cnt_cols,  cut_col_ext_name=None, min_grp_cnt=1000, sort_output=True
+    ):
+        cnts = cnts.copy()
+
+        if cut_col_ext_name is None:
+            cut_col_ext_name = cut_col
+
+        row_cnts = cnts[[cut_col]].groupby(cut_col).size().to_dict()
+
+        if min_grp_cnt is not None:
+            cnts[cut_col] = np.where(
+                (cnts[cut_col].map(row_cnts) > min_grp_cnt), cnts[cut_col], "All other"
+            )
+
+        row_cnts = cnts[[cut_col]].groupby(cut_col).size()
+        grp = cnts[([cut_col] + cnt_cols)].groupby(cut_col).sum()
+
+        grp = grp.div(row_cnts, axis=0)
+        grp["Obs."] = row_cnts
+        grp = grp[(["Obs."] + cnt_cols)]
+        if sort_output:
+            grp = grp.sort_values("Obs.", ascending=False)
+        if "All other" in grp.index:
+            grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
+
+        return grp
+
 
 def run_analysis(df, name):
 
@@ -196,6 +224,8 @@ def run_analysis(df, name):
         df, "spending_categories", category_aggregations, agg=False
     )
 
+
+    # Top responses by original categories 
     summary_counts = pd.DataFrame(
         {
             "Obs.": ohe.sum(axis=0).sort_values(ascending=False),
@@ -217,9 +247,12 @@ def run_analysis(df, name):
         }
     )
 
+    # Sum up to higher level categories 
     ohe = ohe.T.groupby(level=0).max().T
+    cnt_cols = list(ohe.columns)
 
-    spend_df = gen_multi_level_spend(df, category_aggregations_spend)
+
+    # spend_df = gen_multi_level_spend(df, category_aggregations_spend)
 
     fet_cols = [
         "continent",
@@ -235,18 +268,6 @@ def run_analysis(df, name):
     ]
     cnts = df[fet_cols].join(ohe, how="inner")
 
-    # prop_null = (
-    #     cnts[["project_name", "None"]]
-    #     .groupby("project_name")
-    #     .sum()
-    #     .div(cnts[["project_name"]].groupby("project_name").size(), axis=0)
-    # )
-
-    # if "None" in prop_null.columns:
-    #     to_exclude = list(prop_null[prop_null["None"] > 0.5].index)
-
-    #     print(f"Dropping {to_exclude}")
-    #     cnts = cnts[~cnts["project_name"].isin(to_exclude)]
 
     ## Category props
     overall = pd.DataFrame(
@@ -268,35 +289,9 @@ def run_analysis(df, name):
         }
     )
 
-    def prop_tbl_by_cut(
-        cnts, cut_col, cut_col_ext_name=None, min_grp_cnt=1000, sort_output=True
-    ):
-        cnts = cnts.copy()
 
-        if cut_col_ext_name is None:
-            cut_col_ext_name = cut_col
 
-        row_cnts = cnts[[cut_col]].groupby(cut_col).size().to_dict()
-
-        if min_grp_cnt is not None:
-            cnts[cut_col] = np.where(
-                (cnts[cut_col].map(row_cnts) > min_grp_cnt), cnts[cut_col], "All other"
-            )
-
-        row_cnts = cnts[[cut_col]].groupby(cut_col).size()
-        grp = cnts[([cut_col] + list(ohe.columns))].groupby(cut_col).sum()
-
-        grp = grp.div(row_cnts, axis=0)
-        grp["Obs."] = row_cnts
-        grp = grp[(["Obs."] + list(overall.index))]
-        if sort_output:
-            grp = grp.sort_values("Obs.", ascending=False)
-        if "All other" in grp.index:
-            grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
-
-        return grp
-
-    by_proj = prop_tbl_by_cut(cnts, "project_name", min_grp_cnt=5000)
+    by_proj = prop_tbl_by_cut(cnts, "project_name",cnt_cols, min_grp_cnt=5000)
     by_proj.round(2).to_csv(f'output/by_proj_{name}.tsv',sep='\t')
 
     results.append(
@@ -310,7 +305,7 @@ def run_analysis(df, name):
     print(by_proj.round(2))
     by_proj.to_markdown()
 
-    by_gender = prop_tbl_by_cut(cnts, "recipient_gender")
+    by_gender = prop_tbl_by_cut(cnts, "recipient_gender",cnt_cols)
     results.append(
         {
             "title": "By recipient gender",
@@ -335,7 +330,7 @@ def run_analysis(df, name):
     cnts["age_group"] = pd.cut(
         cnts["recipient_age_at_contact"], bins=bins, labels=labels, right=False
     )
-    by_age = prop_tbl_by_cut(cnts, "age_group", min_grp_cnt=None, sort_output=False)
+    by_age = prop_tbl_by_cut(cnts, "age_group",cnt_cols, min_grp_cnt=None, sort_output=False)
 
     results.append(
         {
@@ -367,5 +362,5 @@ df = get_base_data()
 df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
 run_analysis(df, "full")
 df = df[df.rcpnt_fu_num == 1].copy()
-print("Running with 1 row per recipient")
-run_analysis(df, "by_rcpt")
+# print("Running with 1 row per recipient")
+# run_analysis(df, "by_rcpt")
