@@ -1,5 +1,5 @@
 # This is the full list of 64 options items currently used in the spending categories column of the research object.
-research_obc_values = [
+RESEARCH_OBC_VALUES = [
     "Abortion",
     "Agriculture (seeds, fertilizers)",
     "Alcohol or drugs",
@@ -65,7 +65,7 @@ research_obc_values = [
     "Business - Other operational / business expenses",
     "Food Health/medical expenses",
 ]
-fu_obj_values = [
+FU_OBJ_VALUES = [
     "Livestock (goats, sheep, cows, chickens)",
     "Agriculture (seeds, fertilizers)",
     "Starting a new business",
@@ -116,7 +116,7 @@ fu_obj_values = [
 ]
 
 
-how_much_cols = [
+HOW_MUCH_COLS = [
     "How_Much_Spent_on_USAID_Banned_Items__c",
     "How_Much_Spent_on_Livestock__c",
     "How_Much_Spent_on__c",
@@ -153,7 +153,7 @@ how_much_cols = [
     "How_Much_Money_Withdrawn__c",
     "How_Much_Money_Received__c",
 ]
-research_spending_cols = [
+RESEARCH_SPENDING_COLS = [
     "Spending_Drugs__c",
     "Spending_Abortion__c",
     "Spending_Energy__c",
@@ -212,7 +212,7 @@ research_spending_cols = [
 ]
 
 
-transfer_cols = [
+TRANSFER_COLS = [
     "transfer_id",
     "recipient_id",
     "country",
@@ -256,7 +256,7 @@ transfer_cols = [
     "recipient_gender",
 ]
 
-fu_only = [
+FU_ONLY = [
     "How_Much_Was_Stolen__c",
     "How_Much_Spent_on__c",
     "How_Much_Was_Bribed__c",
@@ -266,7 +266,7 @@ fu_only = [
     "Follow_up_Type__c",
 ]
 
-res_only = [
+RES_ONLY = [
     "Spending_Armed_Groups__c",
     "Spending_Benefit_Girl_Child__c",
     "Spending_Categories_Business_Active_c__c",
@@ -292,7 +292,7 @@ res_only = [
     "Spending_Terrorism__c",
     "Spending_Total__c",
 ]
-flup_to_res = {
+FLUP_TO_RES = {
     "What_Did_The_Recipient_Spend_On__c": "Spending_Categories__c",
     "How_Much_Spent_on_USAID_Banned_Items__c": "Spending_USAID_Banned_Items__c",
     "How_Much_Spent_on_Livestock__c": "Spending_Livestock__c",
@@ -327,7 +327,7 @@ flup_to_res = {
 }
 
 
-pick_lst_to_quants_cols = {
+PICK_LST_TO_QUANTS_COLS = {
     "Agriculture (seeds, fertilizers)": "spending_agriculture",
     "Rehabilitation of fields/property": "spending_rehabilitation_fields_propert",
     "Farming produce (e.g. plants, grains)": "spending_farm_produce",
@@ -403,7 +403,7 @@ pick_lst_to_quants_cols = {
 }
 
 
-category_aggregations = {
+CATEGORY_AGGREGATIONS = {
     "Agriculture": [
         "Agriculture (seeds, fertilizers)",
         "Rehabilitation of fields/property",
@@ -497,7 +497,7 @@ category_aggregations = {
 }
 
 # For now, grouping a bunch of cats under other
-all_other = [
+ALL_OTHER = [
     "Employment",
     "Sanitation",
     "Substance Abuse",
@@ -511,3 +511,19 @@ all_other = [
     "Donations",
     "None"
 ]
+
+
+ABBREVIATIONS = {
+    "Obs.": "N",
+    "Agriculture": "Agri",
+    "Debt": "Dbt",
+    "Education": "Edu",
+    "Entrepreneurship": "Ent",
+    "Food": "Fd",
+    "Healthcare": "HC",
+    "Household": "HH",
+    "Housing": "Hou",
+    "Livestock": "Lstk",
+    "Other": "Oth",
+    "Savings": "Sav",
+}

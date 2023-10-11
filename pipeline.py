@@ -11,52 +11,34 @@ pd.set_option("display.max_rows", 500)
 
 from utils.notebook_utils import get_df
 from col_lsts import (
-    research_obc_values,
-    fu_obj_values,
-    research_spending_cols,
-    how_much_cols,
-    research_spending_cols,
-    transfer_cols,
-    fu_only,
-    res_only,
-    flup_to_res,
-    pick_lst_to_quants_cols,
-    category_aggregations,
-    all_other,
+    TRANSFER_COLS,
+    FU_ONLY,
+    RES_ONLY,
+    FLUP_TO_RES,
+    PICK_LST_TO_QUANTS_COLS,
+    CATEGORY_AGGREGATIONS,
+    ALL_OTHER,
+    ABBREVIATIONS
 )
 
-abbreviations = {
-    "Obs.": "N",
-    "Agriculture": "Agri",
-    "Debt": "Dbt",
-    "Education": "Edu",
-    "Entrepreneurship": "Ent",
-    "Food": "Fd",
-    "Healthcare": "HC",
-    "Household": "HH",
-    "Housing": "Hou",
-    "Livestock": "Lstk",
-    "Other": "Oth",
-    "Savings": "Sav",
-}
 
 
-for k in all_other:
-    category_aggregations["Other"] = (
-        category_aggregations["Other"] + category_aggregations[k]
+for k in ALL_OTHER:
+    CATEGORY_AGGREGATIONS["Other"] = (
+        CATEGORY_AGGREGATIONS["Other"] + CATEGORY_AGGREGATIONS[k]
     )
-    del category_aggregations[k]
+    del CATEGORY_AGGREGATIONS[k]
 
-category_aggregations_spend = {}
-for k, lst in category_aggregations.items():
-    category_aggregations_spend[k] = list(
-        set([pick_lst_to_quants_cols[c] for c in lst])
+CATEGORY_AGGREGATIONS_SPEND = {}
+for k, lst in CATEGORY_AGGREGATIONS.items():
+    CATEGORY_AGGREGATIONS_SPEND[k] = list(
+        set([PICK_LST_TO_QUANTS_COLS[c] for c in lst])
     )
-category_aggregations_spend["Agriculture"] += ["spending_items_regular_agriculture"]
-category_aggregations_spend["Entrepreneurship"] += [
+CATEGORY_AGGREGATIONS_SPEND["Agriculture"] += ["spending_items_regular_agriculture"]
+CATEGORY_AGGREGATIONS_SPEND["Entrepreneurship"] += [
     "spending_categories_business_other"
 ]
-category_aggregations_spend["Other"] += [
+CATEGORY_AGGREGATIONS_SPEND["Other"] += [
     "spending_categories_other",
     "spending_motorcycle_bicycle",
     "spending_usaid_banned_items",
@@ -110,10 +92,10 @@ def get_base_data():
               fu.tfr_fu_num,
               ROW_NUMBER() over(PARTITION BY res.Recipient__c, fu.Id
                                 ORDER BY Date_of_Follow_up__c DESC) AS res_fu_num,
-             {','.join([f't.{c}' for c in transfer_cols])},
-            {','.join([f'fu.{c}' for c in fu_only])},
-            {','.join([f'COALESCE(res.{res_col}, fu.{fu_col}) as {res_col}' for fu_col,res_col in flup_to_res.items() ])},
-            {','.join([f'res.{c}' for c in res_only])}
+             {','.join([f't.{c}' for c in TRANSFER_COLS])},
+            {','.join([f'fu.{c}' for c in FU_ONLY])},
+            {','.join([f'COALESCE(res.{res_col}, fu.{fu_col}) as {res_col}' for fu_col,res_col in FLUP_TO_RES.items() ])},
+            {','.join([f'res.{c}' for c in RES_ONLY])}
        
        FROM common.field_metrics_transfers t
        JOIN follow_up fu ON fu.Transfer__c = t.transfer_id
@@ -172,10 +154,10 @@ def split_and_ohe_str_lst(df, col, category_aggregations, agg=True):
     return ohe
 
 
-def gen_multi_level_spend(df, category_aggregations_spend):
+def gen_multi_level_spend(df, CATEGORY_AGGREGATIONS_SPEND):
     rev_map = {
         col: group
-        for group, cols in category_aggregations_spend.items()
+        for group, cols in CATEGORY_AGGREGATIONS_SPEND.items()
         for col in cols
         if col in df.columns
     }
@@ -243,20 +225,18 @@ def prop_tbl_by_cut(
     if "All other" in grp.index:
         grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
     if abbr_col_names:
-        grp = grp.rename(columns=abbreviations)
+        grp = grp.rename(columns=ABBREVIATIONS)
 
     grp.index.name = grp_disp_name
 
     return grp
 
 
-
-
 def run_analysis(df, name):
 
     results = []
     ohe = split_and_ohe_str_lst(
-        df, "spending_categories", category_aggregations, agg=False
+        df, "spending_categories", CATEGORY_AGGREGATIONS, agg=False
     )
 
     # Top responses by original categories
@@ -284,7 +264,7 @@ def run_analysis(df, name):
     # Sum up to higher level categories
     ohe = ohe.T.groupby(level=0).max().T
 
-    # spend_df = gen_multi_level_spend(df, category_aggregations_spend)
+    # spend_df = gen_multi_level_spend(df, CATEGORY_AGGREGATIONS_SPEND)
 
     fet_cols = [
         "country",
@@ -388,7 +368,7 @@ def run_analysis(df, name):
         {
             "title": "Appendix 1: Full map of category aggregations",
             "result": pd.DataFrame(
-                [(k, col) for k, cols in category_aggregations.items() for col in cols],
+                [(k, col) for k, cols in CATEGORY_AGGREGATIONS.items() for col in cols],
                 columns=["Agg. category", "Category"],
             ).set_index("Agg. category"),
             "note": "",
