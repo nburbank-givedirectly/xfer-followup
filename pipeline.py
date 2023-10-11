@@ -25,6 +25,21 @@ from col_lsts import (
     all_other,
 )
 
+abbreviations = {
+    "Obs.": "N",
+    "Agriculture": "Agri",
+    "Debt": "Dbt",
+    "Education": "Edu",
+    "Entrepreneurship": "Ent",
+    "Food": "Fd",
+    "Healthcare": "HC",
+    "Household": "HH",
+    "Housing": "Hou",
+    "Livestock": "Lstk",
+    "Other": "Oth",
+    "Savings": "Sav",
+}
+
 
 for k in all_other:
     category_aggregations["Other"] = (
@@ -117,6 +132,7 @@ def get_base_data():
     df = df[df.tfr_fu_num == 1].copy()
     df = df.drop("tfr_fu_num", axis=1)
 
+
     print(len(df))
     assert len(df) == df.transfer_id.nunique() == df.fu_id.nunique()
     return df
@@ -128,7 +144,9 @@ def get_base_data():
 def split_and_ohe_str_lst(df, col, category_aggregations, agg=True):
     print((len(df)))
 
-    print(f"{((~df[col].isnull()).sum()  / len(df)*100):.2f}%, or {(~df[col].isnull()).sum()} are rows for OHE non-null")
+    print(
+        f"{((~df[col].isnull()).sum()  / len(df)*100):.2f}%, or {(~df[col].isnull()).sum()} are rows for OHE non-null"
+    )
     ohe = (
         df[~(df[col].isnull())][col]
         .str.split(";", expand=True)
@@ -167,7 +185,9 @@ def gen_multi_level_spend(df, category_aggregations_spend):
     spend_cols = [t[1] for t in tuples]
     spend_df = df[spend_cols].copy()
     print(len(spend_df))
-    print(f"{(spend_df.notna().any(axis=1).sum()  / len(df)*100):.2f}%, or {spend_df.notna().any(axis=1).sum()} are rows for spend are non-null")
+    print(
+        f"{(spend_df.notna().any(axis=1).sum()  / len(df)*100):.2f}%, or {spend_df.notna().any(axis=1).sum()} are rows for spend are non-null"
+    )
     spend_df = spend_df[spend_df.notna().any(axis=1)]
     spend_df.columns = pd.MultiIndex.from_tuples(tuples)
     return spend_df.fillna(0).sort_index(axis=1).T.groupby(level=0).sum().T
@@ -178,43 +198,58 @@ def gen_results_md(resutls, name):
     output_str = "# Results\n"
 
     for res in resutls:
-        table = res['result']
-        
+        table = res["result"]
+
         md_tbl = table.to_markdown() if isinstance(table, pd.DataFrame) else table
-        output_str += (
-            f"\n## {res['title']}\n\n{md_tbl}\n\n{res['note']}\n"
-        )
+        output_str += f"\n## {res['title']}\n\n{md_tbl}\n\n{res['note']}\n"
 
     with open(f"output/output_{name}.md", "w") as file:
         file.write(output_str)
 
+
 def prop_tbl_by_cut(
-        cnts, cut_col, cnt_cols,  cut_col_ext_name=None, min_grp_cnt=1000, sort_output=True
-    ):
-        cnts = cnts.copy()
+    cnts,
+    cut_col,
+    sum_cols,
+    grp_disp_name=None,
+    min_grp_cnt=1000,
+    sort_output=True,
+    abbr_col_names=True,
+):
+    cnts = cnts.copy()
 
-        if cut_col_ext_name is None:
-            cut_col_ext_name = cut_col
+    if grp_disp_name is None:
+        grp_disp_name = cut_col
 
-        row_cnts = cnts[[cut_col]].groupby(cut_col).size().to_dict()
 
-        if min_grp_cnt is not None:
-            cnts[cut_col] = np.where(
-                (cnts[cut_col].map(row_cnts) > min_grp_cnt), cnts[cut_col], "All other"
-            )
+    # cut_cols = [cut_cols] if isinstance(cut_cols, str) else cut_cols
 
-        row_cnts = cnts[[cut_col]].groupby(cut_col).size()
-        grp = cnts[([cut_col] + cnt_cols)].groupby(cut_col).sum()
 
-        grp = grp.div(row_cnts, axis=0)
-        grp["Obs."] = row_cnts
-        grp = grp[(["Obs."] + cnt_cols)]
-        if sort_output:
-            grp = grp.sort_values("Obs.", ascending=False)
-        if "All other" in grp.index:
-            grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
+    row_cnts = cnts[[cut_col]].groupby(cut_col).size().to_dict()
 
-        return grp
+    if min_grp_cnt is not None:
+        cnts[cut_col] = np.where(
+            (cnts[cut_col].map(row_cnts) > min_grp_cnt), cnts[cut_col], "All other"
+        )
+
+    row_cnts = cnts[[cut_col]].groupby(cut_col).size()
+    grp = cnts[([cut_col] + sum_cols)].groupby(cut_col).sum()
+
+    grp = grp.div(row_cnts, axis=0) * 100
+    grp["Obs."] = row_cnts
+    grp = grp[(["Obs."] + sum_cols)]
+    if sort_output:
+        grp = grp.sort_values("Obs.", ascending=False)
+    if "All other" in grp.index:
+        grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
+    if abbr_col_names:
+        grp = grp.rename(columns=abbreviations)
+
+    grp.index.name = grp_disp_name
+
+    return grp
+
+
 
 
 def run_analysis(df, name):
@@ -224,38 +259,35 @@ def run_analysis(df, name):
         df, "spending_categories", category_aggregations, agg=False
     )
 
-
-    # Top responses by original categories 
+    # Top responses by original categories
     summary_counts = pd.DataFrame(
         {
-            "Obs.": ohe.sum(axis=0).sort_values(ascending=False),
-            "prop": ohe.sum(axis=0).sort_values(ascending=False) / len(ohe),
+            "N": ohe.sum(axis=0).sort_values(ascending=False),
+            "Prct": (ohe.sum(axis=0).sort_values(ascending=False) / len(ohe))*100,
         }
     )
 
-    num_w_over_1_prct = summary_counts[summary_counts.prop > 0.01]
-    num_w_under_1_prct = summary_counts[summary_counts.prop <= 0.01]
-    note = f"There were {len(num_w_over_1_prct)} response types that were selected by over 1% of respondents. All other responses only contributed for {num_w_under_1_prct['Obs.'].sum()} responses."
+    num_w_over_1_prct = summary_counts[summary_counts.Prct > 0.01]
+    num_w_under_1_prct = summary_counts[summary_counts.Prct <= 0.01]
+    note = f"There were {len(num_w_over_1_prct)} response types that were selected by over 1% of respondents. All other responses only contributed for {num_w_under_1_prct['N'].sum()} responses."
 
     results.append(
         {
             "title": "Top response categories",
-            "result": num_w_over_1_prct.reset_index(
-                names=["Agg. category", "Category"]
-            ).round(3).to_markdown(index=False),
+            "result": num_w_over_1_prct.reset_index(names=["Agg. category", "Category"])
+            .round(3)
+            .to_markdown(index=False),
             "note": note,
         }
     )
 
-    # Sum up to higher level categories 
+    # Sum up to higher level categories
     ohe = ohe.T.groupby(level=0).max().T
-    cnt_cols = list(ohe.columns)
-
 
     # spend_df = gen_multi_level_spend(df, category_aggregations_spend)
 
     fet_cols = [
-        "continent",
+        "country",
         "record_type_name",
         "project_name",
         "transfer_created_date",
@@ -266,14 +298,14 @@ def run_analysis(df, name):
         "recipient_age_at_contact",
         "recipient_gender",
     ]
-    cnts = df[fet_cols].join(ohe, how="inner")
 
+    cnts = df[fet_cols].join(ohe, how="inner")
 
     ## Category props
     overall = pd.DataFrame(
         {
-            "cnt": cnts[ohe.columns].sum().sort_values(ascending=False),
-            "prop": cnts[ohe.columns].sum().sort_values(ascending=False) / len(cnts),
+            "N": cnts[ohe.columns].sum().sort_values(ascending=False),
+            "Prct": (cnts[ohe.columns].sum().sort_values(ascending=False) / len(cnts))*100,
         }
     )
 
@@ -284,20 +316,30 @@ def run_analysis(df, name):
     results.append(
         {
             "title": "Top aggregated response categories",
-            "result": overall.round(3).round(3),
+            "result": overall.round(1).round(3),
             "note": f"{prop_w_resp_in_top_5*100:.1f}% of surveyed recipients indicated that they spent at least part of their transfer on one or more of {', '.join(top_5_str[:4])}, and {top_5_str[4]} expenses.",
         }
     )
 
+    sum_cols = list(overall.index)
+
+    by_proj = prop_tbl_by_cut(
+        cnts, "project_name", sum_cols, grp_disp_name="Project", min_grp_cnt=5000
+    )
 
 
-    by_proj = prop_tbl_by_cut(cnts, "project_name",cnt_cols, min_grp_cnt=5000)
-    by_proj.round(2).to_csv(f'output/by_proj_{name}.tsv',sep='\t')
+    by_proj.round(2).to_csv(f"output/by_proj_{name}.tsv", sep="\t")
+
+
+    # cut_cols = ['country','project_name']
+
+    # cnts[(cut_cols + sum_cols)].groupby(cut_cols).sum()
+
 
     results.append(
         {
             "title": "By project",
-            "result": by_proj.round(2),
+            "result": by_proj.round(1),
             "note": "By project name.",
         }
     )
@@ -305,11 +347,11 @@ def run_analysis(df, name):
     print(by_proj.round(2))
     by_proj.to_markdown()
 
-    by_gender = prop_tbl_by_cut(cnts, "recipient_gender",cnt_cols)
+    by_gender = prop_tbl_by_cut(cnts, "recipient_gender", sum_cols, grp_disp_name="Gender")
     results.append(
         {
             "title": "By recipient gender",
-            "result": by_gender.round(3),
+            "result": by_gender.round(1),
             "note": "Reported recipient expense category proportions by survey respondent gender. Currently sourced from the `recipient_gender` column in `common.field_metrics_transfers`.",
         }
     )
@@ -330,12 +372,14 @@ def run_analysis(df, name):
     cnts["age_group"] = pd.cut(
         cnts["recipient_age_at_contact"], bins=bins, labels=labels, right=False
     )
-    by_age = prop_tbl_by_cut(cnts, "age_group",cnt_cols, min_grp_cnt=None, sort_output=False)
+    by_age = prop_tbl_by_cut(
+        cnts, "age_group", sum_cols, grp_disp_name="Age", min_grp_cnt=None, sort_output=False
+    )
 
     results.append(
         {
             "title": "By recipient age",
-            "result": by_age.round(3),
+            "result": by_age.round(1),
             "note": "Reported recipient at time of followup contact. Currently sourced from the `recipient_age_at_contact` column in `common.field_metrics_transfers`.",
         }
     )
@@ -358,6 +402,10 @@ def run_analysis(df, name):
 check_cnts()
 
 df = get_base_data()
+
+short_names = {'Large Transfer':'LT', 'Emergency Relief':'ER', 'COVID-19':'C19'}
+
+df['project_name'] = df['project_name'].replace(short_names, regex=True)
 
 df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
 run_analysis(df, "full")
