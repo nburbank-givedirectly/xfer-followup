@@ -232,6 +232,56 @@ def prop_tbl_by_cut(
     return grp
 
 
+def prop_tbl_by_cut_multi(
+    cnts,
+    cut_col,
+    sum_cols,
+    grp_disp_name=None,
+    min_grp_cnt=1000,
+    sort_output=True,
+    abbr_col_names=True,
+):
+    cnts = cnts.copy()
+
+    if grp_disp_name is None:
+        grp_disp_name = cut_col
+
+
+    # cut_cols = [cut_cols] if isinstance(cut_cols, str) else cut_cols
+
+ 
+
+    row_cnts = cnts[cut_col].groupby(cut_col).size()
+    cnts['row_cnts'] = cnts[cut_col].groupby(cut_col).size()
+
+
+    cnts.apply(lambda row: (row['country'], row['project_name']), axis=1).map(row_cnts)
+
+    import IPython; IPython.embed()
+
+
+
+    if min_grp_cnt is not None:
+        cnts[cut_col] = np.where(( cnts.apply(lambda row: (row['country'], row['project_name']), axis=1).map(row_cnts) > min_grp_cnt), cnts[cut_col], ('All other',''))
+
+    row_cnts = cnts[[cut_col]].groupby(cut_col).size()
+    grp = cnts[([cut_col] + sum_cols)].groupby(cut_col).sum()
+
+    grp = grp.div(row_cnts, axis=0) * 100
+    grp["Obs."] = row_cnts
+    grp = grp[(["Obs."] + sum_cols)]
+    if sort_output:
+        grp = grp.sort_values("Obs.", ascending=False)
+    if "All other" in grp.index:
+        grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
+    if abbr_col_names:
+        grp = grp.rename(columns=ABBREVIATIONS)
+
+    grp.index.name = grp_disp_name
+
+    return grp
+
+
 def run_analysis(df, name):
 
     results = []
@@ -303,8 +353,8 @@ def run_analysis(df, name):
 
     sum_cols = list(overall.index)
 
-    by_proj = prop_tbl_by_cut(
-        cnts, "project_name", sum_cols, grp_disp_name="Project", min_grp_cnt=5000
+    by_proj = prop_tbl_by_cut_multi(
+        cnts, ["country" ,"project_name"], sum_cols, grp_disp_name="Project", min_grp_cnt=5000
     )
 
 
@@ -384,10 +434,15 @@ check_cnts()
 df = get_base_data()
 
 short_names = {'Large Transfer':'LT', 'Emergency Relief':'ER', 'COVID-19':'C19'}
+countries = df.country.unique()
+for c in countries:
+    short_names[c] = ''
 
-df['project_name'] = df['project_name'].replace(short_names, regex=True)
+
+df['project_name'] = df['project_name'].replace(short_names, regex=True).str.strip()
 
 df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
+
 run_analysis(df, "full")
 df = df[df.rcpnt_fu_num == 1].copy()
 # print("Running with 1 row per recipient")
