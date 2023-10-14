@@ -162,4 +162,4 @@ cython_debug/
 **/.DS_Store
 data_cache/*
 output/*
-utils/nb_secrets.py
+src/nb_secrets.py

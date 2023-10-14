@@ -509,7 +509,8 @@ ALL_OTHER = [
     "Moving",
     "Illegal Activities",
     "Donations",
-    "None"
+    "None",
+    "Debt"
 ]
 
 
