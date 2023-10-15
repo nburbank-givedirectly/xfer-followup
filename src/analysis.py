@@ -240,11 +240,11 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
             "Prct": (ohe.sum(axis=0).sort_values(ascending=False) / len(ohe)) * 100,
         }
     )
-    num_w_over_1_prct = summary_counts[summary_counts.Prct > 0.01]
-    num_w_under_1_prct = summary_counts[summary_counts.Prct <= 0.01]
+    num_w_over_1_prct = summary_counts[summary_counts.Prct > 1]
+    num_w_under_1_prct = summary_counts[summary_counts.Prct <= 1]
     str_results["top_response_categories_mdtbl"] = (
         num_w_over_1_prct.reset_index(names=["Agg. category", "Category"])
-        .round(3)
+        .round(1)
         .to_markdown(index=False)
     )
     str_results[
