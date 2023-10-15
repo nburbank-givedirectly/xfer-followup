@@ -54,7 +54,7 @@ def get_base_data():
         base_query = file.read()
 
     df = get_df(query=base_query, limit=0, print_q=False)
-    start_len = len(df)
+    # start_len = len(df)
     df.columns = [c.lower().rstrip("__c") for c in df.columns]
     df = df[df.res_fu_num == 1].copy()
     df = df.drop("res_fu_num", axis=1)
@@ -62,13 +62,10 @@ def get_base_data():
     df = df[df.tfr_fu_num == 1].copy()
     df = df.drop("tfr_fu_num", axis=1)
 
-    end_len = len(df)
+    # end_len = len(df)
 
     assert len(df) == df.transfer_id.nunique() == df.fu_id.nunique()
     return df
-
-
-# Limit to 1 response per recipient
 
 
 def split_and_ohe_str_lst(df, col, category_aggregations, agg=True):
@@ -121,12 +118,10 @@ def gen_multi_level_spend(df, CATEGORY_AGGREGATIONS_SPEND):
     return spend_df.fillna(0).sort_index(axis=1).T.groupby(level=0).sum().T
 
 
-def gen_results_md(results, name):
+def gen_results_md(results, name)-> None:
+    """Stich together markdown results file with string results"""
     with open("writeup/writeup.md", "r") as file:
         templete = file.read()
-
-    for k, v in results.items():
-        results[k] = v.to_markdown() if isinstance(v, pd.DataFrame) else v
 
     output_str = templete.format(**results)
 
@@ -134,8 +129,48 @@ def gen_results_md(results, name):
         file.write(output_str)
 
 
+def gen_excel(xls_results, output_str, also_tsv=True):
+    """Make excel file with one table per sheet."""
+    with pd.ExcelWriter(f"output/{output_str}.xlsx") as writer:
+        for sheet_name, df in xls_results:
+            df.to_excel(writer, sheet_name=sheet_name, index=True, float_format="%.3f")
+            if also_tsv:
+                df.to_csv(f"output/{output_str}_{sheet_name}.tsv", sep="\t")
+
+
+def add_features(df):
+    
+    short_names = {
+        "Large Transfer": "LT",
+        "Emergency Relief": "ER",
+        "COVID-19": "C19",
+        "Basic Income": "BI",
+    }
+
+    df["project_name"] = df["project_name"].replace(short_names, regex=True).str.strip()
+
+    bins = [0, 19, 29, 39, 49, 59, 69, 79, 89, 99, 150]
+    labels = [
+        "0-19",
+        "20-29",
+        "30-39",
+        "40-49",
+        "50-59",
+        "60-69",
+        "70-79",
+        "80-89",
+        "90-99",
+        "99+",
+    ]
+    df["age_group"] = pd.cut(
+        df["recipient_age_at_contact"], bins=bins, labels=labels, right=False
+    )
+
+    return df
+
+
 def prop_tbl_by_cut(
-    cnts,
+    df,
     cut_col,
     sum_cols,
     grp_disp_name=None,
@@ -143,77 +178,20 @@ def prop_tbl_by_cut(
     sort_output=True,
     abbr_col_names=True,
 ):
-    cnts = cnts.copy()
+    df = df.copy()
 
     if grp_disp_name is None:
         grp_disp_name = cut_col
 
-    # cut_cols = [cut_cols] if isinstance(cut_cols, str) else cut_cols
-
-    row_cnts = cnts[[cut_col]].groupby(cut_col).size().to_dict()
-
     if min_grp_cnt is not None:
-        cnts[cut_col] = np.where(
-            (cnts[cut_col].map(row_cnts) > min_grp_cnt), cnts[cut_col], "All other"
-        )
+        category_counts = df[cut_col].value_counts()
+        categories_below_threshold = category_counts[
+            category_counts < min_grp_cnt
+        ].index
+        df.loc[df[cut_col].isin(categories_below_threshold), cut_col] = "All other"
 
-    row_cnts = cnts[[cut_col]].groupby(cut_col).size()
-    grp = cnts[([cut_col] + sum_cols)].groupby(cut_col).sum()
-
-    grp = grp.div(row_cnts, axis=0) * 100
-    grp["Obs."] = row_cnts
-    grp = grp[(["Obs."] + sum_cols)]
-    if sort_output:
-        grp = grp.sort_values("Obs.", ascending=False)
-    if "All other" in grp.index:
-        grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
-    if abbr_col_names:
-        grp = grp.rename(columns=ABBREVIATIONS)
-
-    grp.index.name = grp_disp_name
-
-    return grp
-
-
-def prop_tbl_by_cut_multi(
-    cnts,
-    cut_col,
-    sum_cols,
-    grp_disp_name=None,
-    min_grp_cnt=1000,
-    sort_output=True,
-    abbr_col_names=True,
-):
-    cnts = cnts.copy()
-
-    if grp_disp_name is None:
-        grp_disp_name = cut_col
-
-    # cut_cols = [cut_cols] if isinstance(cut_cols, str) else cut_cols
-
-    row_cnts = cnts[cut_col].groupby(cut_col).size()
-    cnts["row_cnts"] = cnts[cut_col].groupby(cut_col).size()
-
-    cnts.apply(lambda row: (row["country"], row["project_name"]), axis=1).map(row_cnts)
-
-    import IPython
-
-    IPython.embed()
-
-    if min_grp_cnt is not None:
-        cnts[cut_col] = np.where(
-            (
-                cnts.apply(
-                    lambda row: (row["country"], row["project_name"]), axis=1
-                ).map(row_cnts)
-                > min_grp_cnt
-            ),
-            cnts[cut_col],
-            ("All other", ""),
-        )
-
-    row_cnts = cnts[[cut_col]].groupby(cut_col).size()
-    grp = cnts[([cut_col] + sum_cols)].groupby(cut_col).sum()
+    row_cnts = df[cut_col].value_counts()
+    grp = df[([cut_col] + sum_cols)].groupby(cut_col).sum()
 
     grp = grp.div(row_cnts, axis=0) * 100
     grp["Obs."] = row_cnts
@@ -231,12 +209,18 @@ def prop_tbl_by_cut_multi(
 
 
 def run_analysis(df, name):
-    dt_str = datetime.datetime.now().strftime("%Y-%m-%d")
-    results = {"cur_date": dt_str}
-    xls_writer = pd.ExcelWriter("output/output.xlsx", engine="xlsxwriter")
-    ohe = split_and_ohe_str_lst(
-        df, "spending_categories", CATEGORY_AGGREGATIONS, agg=False
-    )
+    str_results = {"cur_date": datetime.datetime.now().strftime("%Y-%m-%d")}
+    xls_results = []
+
+    # Cacl One-hot encoded counts
+    ohe_chache_path = f"data_cache/{name}_ohe.pq"
+    if os.path.exists(ohe_chache_path):
+        ohe = pd.read_parquet(ohe_chache_path)
+    else:
+        ohe = split_and_ohe_str_lst(
+            df, "spending_categories", CATEGORY_AGGREGATIONS, agg=False
+        )
+        ohe.to_parquet(ohe_chache_path)
 
     # Top responses by original categories
     summary_counts = pd.DataFrame(
@@ -245,36 +229,31 @@ def run_analysis(df, name):
             "Prct": (ohe.sum(axis=0).sort_values(ascending=False) / len(ohe)) * 100,
         }
     )
-
     num_w_over_1_prct = summary_counts[summary_counts.Prct > 0.01]
     num_w_under_1_prct = summary_counts[summary_counts.Prct <= 0.01]
-    note = f"There were {len(num_w_over_1_prct)} response types that were selected by over 1% of respondents. All other responses only contributed for {num_w_under_1_prct['N'].sum()} responses."
-
-    results["top_response_categories_mdtbl"] = (
+    str_results["top_response_categories_mdtbl"] = (
         num_w_over_1_prct.reset_index(names=["Agg. category", "Category"])
         .round(3)
         .to_markdown(index=False)
     )
-    results[
+    str_results[
         "top_response_categories_note"
     ] = f"There were {len(num_w_over_1_prct)} response types that were selected by over 1% of respondents. All other responses only contributed for {num_w_under_1_prct['N'].sum()} responses."
 
-    # Sum up to higher level categories
+    # For rest of analysis, sum up to higher level categories
     ohe = ohe.T.groupby(level=0).max().T
-
-    # spend_df = gen_multi_level_spend(df, CATEGORY_AGGREGATIONS_SPEND)
 
     fet_cols = [
         "country",
         "record_type_name",
         "project_name",
-        "transfer_created_date",
-        "completed_date",
-        "transfer_status",
-        "transfer_amount_commitment_complete_usd",
-        "transfer_amount_commitment_outstanding_usd",
-        "recipient_age_at_contact",
+        # "transfer_created_date",
+        # "completed_date",
+        # "transfer_status",
+        # "transfer_amount_commitment_complete_usd",
+        # "transfer_amount_commitment_outstanding_usd",
         "recipient_gender",
+        "age_group",
     ]
 
     cnts = df[fet_cols].join(ohe, how="inner")
@@ -292,17 +271,20 @@ def run_analysis(df, name):
     prop_w_resp_in_top_5 = cnts[top_5].max(axis=1).sum() / len(cnts)
     top_5_str = [n.lower() for n in top_5]
 
-    results["top_aggregated_response_categories_mdtbl"] = overall.round(1).to_markdown()
-    results[
-        "top_aggregated_response_categories_note"
-    ] = f"{prop_w_resp_in_top_5*100:.1f}% of surveyed recipients indicated that they spent at least part of their transfer on one or more of {', '.join(top_5_str[:4])}, and {top_5_str[4]} expenses."
+    note = f"{prop_w_resp_in_top_5*100:.1f}% of surveyed recipients indicated that they spent at least part of their transfer on one or more of {', '.join(top_5_str[:4])}, and {top_5_str[4]} expenses."
+    str_results["top_aggregated_response_categories_mdtbl"] = overall.round(
+        1
+    ).to_markdown()
+    str_results["top_aggregated_response_categories_note"] = note
 
     sum_cols = list(overall.index)
 
+    # Caculate by project
     by_proj = prop_tbl_by_cut(
         cnts, "project_name", sum_cols, grp_disp_name="Project", min_grp_cnt=1000
     ).reset_index()
 
+    # Hacky way to add country into index
     proj_to_country = (
         cnts[["project_name", "country"]]
         .drop_duplicates()
@@ -312,56 +294,23 @@ def run_analysis(df, name):
     proj_to_country["All other"] = "All other"
 
     by_proj["Country"] = by_proj["Project"].map(proj_to_country)
-    # import IPython; IPython.embed()
 
     country_to_blank = {country: "" for country in cnts["country"].unique()}
     by_proj["Project"] = (
         by_proj["Project"].replace(country_to_blank, regex=True).str.strip()
     )
     by_proj = by_proj.set_index(["Country", "Project"]).sort_index()
+    xls_results.append(("by_proj", by_proj))
+    str_results["by_project_mdtbl"] = by_proj.round(1)
 
-    # country_sums = by_proj[['Country', 'N']].groupby('Country').sum().sort_values('N',ascending=False)
-    # country_sums = country_sums.loc[[c for c in country_sums.index if c != "All other"] + ["All other"]]
-
-    by_proj = by_proj.loc[
-        [c for c in by_proj.index if c != ("All other", "All other")]
-        + [("All other", "All other")]
-    ]
-
-    print(by_proj)
-    by_proj.to_excel(
-        xls_writer, sheet_name="by_project", index=True, float_format="%.2f"
-    )
-    by_proj.round(2).to_csv(f"output/by_proj_{name}.tsv", sep="\t")
-
-    results["by_project_mdtbl"] = by_proj.round(1)
-
-    print(by_proj.round(2))
-
+    # By gender
     by_gender = prop_tbl_by_cut(
         cnts, "recipient_gender", sum_cols, grp_disp_name="Gender"
     )
-    results["by_recipient_gender_mdtbl"] = by_gender.round(1)
-    by_gender.to_excel(
-        xls_writer, sheet_name="by_gender", index=True, float_format="%.2f"
-    )
+    str_results["by_recipient_gender_mdtbl"] = by_gender.round(1)
+    xls_results.append(("by_gender", by_gender))
 
-    bins = [0, 19, 29, 39, 49, 59, 69, 79, 89, 99, 150]
-    labels = [
-        "0-19",
-        "20-29",
-        "30-39",
-        "40-49",
-        "50-59",
-        "60-69",
-        "70-79",
-        "80-89",
-        "90-99",
-        "99+",
-    ]
-    cnts["age_group"] = pd.cut(
-        cnts["recipient_age_at_contact"], bins=bins, labels=labels, right=False
-    )
+    # By age bin
     by_age = prop_tbl_by_cut(
         cnts,
         "age_group",
@@ -370,48 +319,48 @@ def run_analysis(df, name):
         min_grp_cnt=None,
         sort_output=False,
     )
-
-    results["by_recipient_age_mdtbl"] = by_age.round(1).to_markdown()
-
-    results["full_map_of_category_aggregations_mdtbl"] = pd.DataFrame(
+    str_results["by_recipient_age_mdtbl"] = by_age.round(1).to_markdown()
+    str_results["full_map_of_category_aggregations_mdtbl"] = pd.DataFrame(
         [(k, col) for k, cols in CATEGORY_AGGREGATIONS.items() for col in cols],
         columns=["Agg. category", "Category"],
     ).set_index("Agg. category")
+    gen_results_md(str_results, name)
+    gen_excel(xls_results, name)
 
-    gen_results_md(results, name)
-    xls_writer._save()
-    return results
+    return str_results
 
+if __name__ == "__main__":
 
-check_cnts()
+    check_cnts()
 
-df = get_base_data()
-
-short_names = {
-    "Large Transfer": "LT",
-    "Emergency Relief": "ER",
-    "COVID-19": "C19",
-    "Basic Income": "BI",
-}
+    df = get_base_data()
+    df = add_features(df)
+    df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
+    run_analysis(df, "full")
 
 
-df["project_name"] = df["project_name"].replace(short_names, regex=True).str.strip()
+    subprocess.run(
+    [
+        "pandoc",
+        "-f",
+        "markdown-auto_identifiers",
+        "output/output_full.md",
+        "-o",
+        "output/output_full.docx",
+        "--reference-doc=writeup/custom-reference.docx",
+    ])
+    df = df[df.rcpnt_fu_num == 1].copy()
+    print("Running with 1 row per recipient")
+    run_analysis(df, "by_rcpt")
 
-df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
+    subprocess.run(
+    [
+        "pandoc",
+        "-f",
+        "markdown-auto_identifiers",
+        "output/output_by_rcpt.md",
+        "-o",
+        "output/output_by_rcpt.docx",
+        "--reference-doc=writeup/custom-reference.docx",
+    ])
 
-run_analysis(df, "full")
-
-
-command = [
-    "pandoc",
-    "-f","markdown-auto_identifiers",
-    "output/output_full.md",
-    "-o",
-    "output/output_full.docx",
-    "--reference-doc=writeup/custom-reference.docx",
-]
-
-subprocess.run(command)
-df = df[df.rcpnt_fu_num == 1].copy()
-# print("Running with 1 row per recipient")
-# run_analysis(df, "by_rcpt")
