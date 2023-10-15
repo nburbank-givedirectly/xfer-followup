@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 
 import os
-
-
 import datetime
 from typing import Dict, List
-
 import pandas as pd
-import numpy as np
 
-pd.set_option("display.max_rows", 500)
 
 from helpers import get_df
 from mappings import (
@@ -36,7 +31,7 @@ def further_group_agg_spend_catigories(
 
 
 def mk_category_aggregations_spend(
-    category_aggregations_spend, pick_lst_to_quants_cols
+    aggregate_to_detailed_spend_category, pick_lst_to_quants_cols
 ):
     """
     Generate an equivalent of the aggregate to detailed spend category
@@ -63,7 +58,7 @@ def mk_category_aggregations_spend(
 
 def check_cnts():
     """Run diagnostic counts query and print results."""
-    with open("queries/val_query.sql", "r") as file:
+    with open("queries/val_query.sql", "r", encoding="utf-8") as file:
         query = file.read()
     df_cnts = get_df(query=query, limit=0, print_q=False)
     print(df_cnts)
@@ -74,7 +69,7 @@ def get_base_data():
     follow-up survey / research record per transfer.
     """
 
-    with open("queries/base_query.sql", "r") as file:
+    with open("queries/base_query.sql", "r", encoding="utf-8") as file:
         base_query = file.read()
 
     df = get_df(query=base_query, limit=0, print_q=False)
@@ -295,7 +290,7 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
 
     sum_cols = list(overall.index)
 
-    # Caculate by project
+    # Calculate by project
     by_proj = prop_tbl_by_cut(
         cnts, "project_name", sum_cols, grp_disp_name="Project", min_grp_cnt=1000
     ).reset_index()
@@ -345,7 +340,12 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
         columns=["Agg. category", "Category"],
     ).set_index("Agg. category")
 
-    return {"str_results": str_results, "xls_results": xls_results}
+    return {
+        "str_results": str_results,
+        "xls_results": xls_results,
+        "df": df,
+        "cnts": cnts,
+    }
 
 
 def dl_and_analyze_data():
@@ -357,6 +357,9 @@ def dl_and_analyze_data():
 
     aggregate_to_detailed_spend_category = further_group_agg_spend_catigories(
         AGGREGATE_TO_DETAILED_SPEND_CATEGORY, OTHER_AGGREGATE_SPEND_CATIGORIES
+    )
+    category_aggregations_spend = mk_category_aggregations_spend(
+        aggregate_to_detailed_spend_category, PICK_LST_TO_QUANTS_COLS
     )
 
     df = get_base_data()
@@ -371,7 +374,7 @@ def dl_and_analyze_data():
 
 
 if __name__ == "__main__":
-    results = run_analysis()
+    results = dl_and_analyze_data()
     import IPython
 
     IPython.embed()
