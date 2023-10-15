@@ -1,9 +1,93 @@
 import sqlparse
 
-from col_lsts import TRANSFER_COLS, FU_ONLY, RES_ONLY, FLUP_TO_RES
+from mappings import FLUP_TO_RES
 
 START_DT = "2020-01-01"
 END_DT = "2023-10-01"
+
+# Columns to include from the transfers metrics table.
+TRANSFER_COLS = [
+    "transfer_id",
+    "recipient_id",
+    "country",
+    "continent",
+    "record_type_name",
+    "project_name",
+    "transfer_created_date",
+    "original_scheduled_date",
+    "most_recent_attempt_date",
+    "completed_date",
+    "transfer_status",
+    "discarded_duplicate",
+    "recipient_inactive_stage",
+    "transfer_inactive",
+    "transfer_completed",
+    # "transfer_amount_total_full_local_estimate",
+    # "transfer_amount_total_eligible_local",
+    # "transfer_amount_total_discarded_local_estimate",
+    # "transfer_amount_total_full_usd_estimate",
+    # "transfer_amount_total_eligible_usd",
+    # "transfer_amount_total_discarded_usd_estimate",
+    # "transfer_amount_total_eligible_usd_current_value",
+    # "transfer_amount_total_complete_local",
+    # "transfer_amount_total_outstanding_local",
+    # "transfer_amount_total_complete_usd",
+    # "transfer_amount_total_outstanding_usd",
+    # "transfer_amount_commitment_full_local_estimate",
+    # "transfer_amount_commitment_eligible_local",
+    # "transfer_amount_commitment_discarded_local_estimate",
+    # "transfer_amount_commitment_full_usd_estimate",
+    # "transfer_amount_commitment_eligible_usd",
+    # "transfer_amount_commitment_discarded_usd_estimate",
+    # "transfer_amount_commitment_eligible_usd_current_value",
+    # "transfer_amount_commitment_complete_local",
+    # "transfer_amount_commitment_outstanding_local",
+    "transfer_amount_commitment_complete_usd",
+    "transfer_amount_commitment_outstanding_usd",
+    "index_one_on_time",
+    "index_later_delay_flup",
+    "recipient_age_at_contact",
+    "recipient_gender",
+]
+
+# Columns to include from the field_salesforce_followup table.
+FU_ONLY = [
+    "How_Much_Was_Stolen__c",
+    "How_Much_Spent_on__c",
+    "How_Much_Was_Bribed__c",
+    "How_Much_Money_Received__c",
+    "How_Much_Money_Withdrawn__c",
+    "Date_of_Follow_up__c",
+    "Follow_up_Type__c",
+]
+
+# Columns to include from the field_salesforce_research table.
+RES_ONLY = [
+    "Spending_Armed_Groups__c",
+    "Spending_Benefit_Girl_Child__c",
+    "Spending_Categories_Business_Active_c__c",
+    "Spending_Categories_Business_Other_c__c",
+    "Spending_Categories_Business_c__c",
+    "Spending_Categories_Other__c",
+    "Spending_Farm_Produce__c",
+    "Spending_Hiring__c",
+    "Spending_Improving_Home_Including_Repa__c",
+    "Spending_Items_Regular_Agriculture__c",
+    "Spending_Livestock_Including_Vet__c",
+    "Spending_Machinery_Equipment__c",
+    "Spending_Marketing_Branding__c",
+    "Spending_Motorcycle_Bicycle__c",
+    "Spending_Moving__c",
+    "Spending_Product_Certificates__c",
+    "Spending_Product_Distribution__c",
+    "Spending_Qat__c",
+    "Spending_Rehabilitation_Fields_Propert__c",
+    "Spending_Repair_Assets__c",
+    "Spending_School_Transportation__c",
+    "Spending_Staff_Training__c",
+    "Spending_Terrorism__c",
+    "Spending_Total__c",
+]
 
 
 def mk_base_query(filename: str) -> None:
@@ -78,5 +162,5 @@ def mk_val_query(filename: str) -> None:
 
 
 if __name__ == "__main__":
-    mk_base_query(filename="../queries/base_query")
-    mk_val_query(filename="../queries/val_query")
+    mk_base_query(filename="queries/base_query")
+    mk_val_query(filename="queries/val_query")

@@ -1,4 +1,8 @@
+"""Helper code to run databricks queries and cache those results"""
 import os
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 from databricks import sql
 import hashlib
 import pandas as pd
@@ -16,21 +20,23 @@ def generate_hash(string):
     digest = hash_object.hexdigest()
     return digest[:10]
 
+
 def write_string_to_file(file_path, string_to_write):
-    with open(file_path, 'w') as file:
+    with open(file_path, "w") as file:
         file.write(string_to_write)
+
 
 def get_df(query, limit=1000, print_q=False):
     if limit != 0:
         query = query.strip() + f" limit {limit}"
 
-    query = sqlparse.format(query.strip(), reindent=True, keyword_case='upper')
+    query = sqlparse.format(query.strip(), reindent=True, keyword_case="upper")
     hash_key = generate_hash(query.lower())
     if print_q:
         print(query)
 
     file_path = f"data_cache/{hash_key}.pq"
-    query_path =f"data_cache/{hash_key}.sql"
+    query_path = f"data_cache/{hash_key}.sql"
 
     if os.path.exists(file_path):
         print(f"Loading {file_path}")
@@ -45,8 +51,7 @@ def get_df(query, limit=1000, print_q=False):
             access_token=ACCESS_TOKEN,
         ) as connection:
             df = read_sql(query, connection)
-        write_string_to_file(query_path,query)
+        write_string_to_file(query_path, query)
         df.to_parquet(file_path)
-        
 
     return df

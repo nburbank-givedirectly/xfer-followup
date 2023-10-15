@@ -1,5 +1,5 @@
 # This is the full list of 64 options items currently used in the spending categories column of the research object.
-RESEARCH_OBC_VALUES = [
+RESEARCH_OBJ_VALUES = [
     "Abortion",
     "Agriculture (seeds, fertilizers)",
     "Alcohol or drugs",
@@ -65,6 +65,8 @@ RESEARCH_OBC_VALUES = [
     "Business - Other operational / business expenses",
     "Food Health/medical expenses",
 ]
+
+# This is the equivalent list of pick-list values in the follow up object.
 FU_OBJ_VALUES = [
     "Livestock (goats, sheep, cows, chickens)",
     "Agriculture (seeds, fertilizers)",
@@ -115,7 +117,7 @@ FU_OBJ_VALUES = [
     "Hiring",
 ]
 
-
+# This the list of quantitative spending columns present in the followup object
 HOW_MUCH_COLS = [
     "How_Much_Spent_on_USAID_Banned_Items__c",
     "How_Much_Spent_on_Livestock__c",
@@ -153,6 +155,8 @@ HOW_MUCH_COLS = [
     "How_Much_Money_Withdrawn__c",
     "How_Much_Money_Received__c",
 ]
+
+# These are th quantitative spending columns present in the followup object
 RESEARCH_SPENDING_COLS = [
     "Spending_Drugs__c",
     "Spending_Abortion__c",
@@ -212,86 +216,8 @@ RESEARCH_SPENDING_COLS = [
 ]
 
 
-TRANSFER_COLS = [
-    "transfer_id",
-    "recipient_id",
-    "country",
-    "continent",
-    "record_type_name",
-    "project_name",
-    "transfer_created_date",
-    "original_scheduled_date",
-    "most_recent_attempt_date",
-    "completed_date",
-    "transfer_status",
-    "discarded_duplicate",
-    "recipient_inactive_stage",
-    "transfer_inactive",
-    "transfer_completed",
-    # "transfer_amount_total_full_local_estimate",
-    # "transfer_amount_total_eligible_local",
-    # "transfer_amount_total_discarded_local_estimate",
-    # "transfer_amount_total_full_usd_estimate",
-    # "transfer_amount_total_eligible_usd",
-    # "transfer_amount_total_discarded_usd_estimate",
-    # "transfer_amount_total_eligible_usd_current_value",
-    # "transfer_amount_total_complete_local",
-    # "transfer_amount_total_outstanding_local",
-    # "transfer_amount_total_complete_usd",
-    # "transfer_amount_total_outstanding_usd",
-    # "transfer_amount_commitment_full_local_estimate",
-    # "transfer_amount_commitment_eligible_local",
-    # "transfer_amount_commitment_discarded_local_estimate",
-    # "transfer_amount_commitment_full_usd_estimate",
-    # "transfer_amount_commitment_eligible_usd",
-    # "transfer_amount_commitment_discarded_usd_estimate",
-    # "transfer_amount_commitment_eligible_usd_current_value",
-    # "transfer_amount_commitment_complete_local",
-    # "transfer_amount_commitment_outstanding_local",
-    "transfer_amount_commitment_complete_usd",
-    "transfer_amount_commitment_outstanding_usd",
-    "index_one_on_time",
-    "index_later_delay_flup",
-    "recipient_age_at_contact",
-    "recipient_gender",
-]
-
-FU_ONLY = [
-    "How_Much_Was_Stolen__c",
-    "How_Much_Spent_on__c",
-    "How_Much_Was_Bribed__c",
-    "How_Much_Money_Received__c",
-    "How_Much_Money_Withdrawn__c",
-    "Date_of_Follow_up__c",
-    "Follow_up_Type__c",
-]
-
-RES_ONLY = [
-    "Spending_Armed_Groups__c",
-    "Spending_Benefit_Girl_Child__c",
-    "Spending_Categories_Business_Active_c__c",
-    "Spending_Categories_Business_Other_c__c",
-    "Spending_Categories_Business_c__c",
-    "Spending_Categories_Other__c",
-    "Spending_Farm_Produce__c",
-    "Spending_Hiring__c",
-    "Spending_Improving_Home_Including_Repa__c",
-    "Spending_Items_Regular_Agriculture__c",
-    "Spending_Livestock_Including_Vet__c",
-    "Spending_Machinery_Equipment__c",
-    "Spending_Marketing_Branding__c",
-    "Spending_Motorcycle_Bicycle__c",
-    "Spending_Moving__c",
-    "Spending_Product_Certificates__c",
-    "Spending_Product_Distribution__c",
-    "Spending_Qat__c",
-    "Spending_Rehabilitation_Fields_Propert__c",
-    "Spending_Repair_Assets__c",
-    "Spending_School_Transportation__c",
-    "Spending_Staff_Training__c",
-    "Spending_Terrorism__c",
-    "Spending_Total__c",
-]
+# A mapping between the how much spent columns present in the follow-up
+# table and the analogous spending columns in the research object.
 FLUP_TO_RES = {
     "What_Did_The_Recipient_Spend_On__c": "Spending_Categories__c",
     "How_Much_Spent_on_USAID_Banned_Items__c": "Spending_USAID_Banned_Items__c",
@@ -326,7 +252,8 @@ FLUP_TO_RES = {
     "How_Much_Unspent__c": "Spending_Unspent__c",
 }
 
-
+# An (in-perfect) mapping between the what did the recipients spend on
+# picklist values and the "How-much" quantitative columns.
 PICK_LST_TO_QUANTS_COLS = {
     "Agriculture (seeds, fertilizers)": "spending_agriculture",
     "Rehabilitation of fields/property": "spending_rehabilitation_fields_propert",
@@ -403,7 +330,11 @@ PICK_LST_TO_QUANTS_COLS = {
 }
 
 
-CATEGORY_AGGREGATIONS = {
+# A mapping between th ~65 detailed categories present in the
+# Spending_Categories / What_Did_The_Recipient_Spend_On columns 15-ish
+# higher level single-word categories.
+
+AGGREGATE_TO_DETAILED_SPEND_CATEGORY = {
     "Agriculture": [
         "Agriculture (seeds, fertilizers)",
         "Rehabilitation of fields/property",
@@ -496,8 +427,8 @@ CATEGORY_AGGREGATIONS = {
     "Energy": ["Energy"],
 }
 
-# For now, grouping a bunch of cats under other
-ALL_OTHER = [
+# For now, grouping a bunch of high-level categories under "other"
+OTHER_AGGREGATE_SPEND_CATIGORIES = [
     "Employment",
     "Sanitation",
     "Substance Abuse",
@@ -510,11 +441,11 @@ ALL_OTHER = [
     "Illegal Activities",
     "Donations",
     "None",
-    "Debt"
+    "Debt",
 ]
 
-
-ABBREVIATIONS = {
+# It's sometimes useful to present these categories in a space-saving manner
+AGGREGATE_CATEGORY_ABBREVIATIONS = {
     "Obs.": "N",
     "Agriculture": "Agri",
     "Debt": "Dbt",
@@ -527,4 +458,14 @@ ABBREVIATIONS = {
     "Livestock": "Lstk",
     "Other": "Oth",
     "Savings": "Sav",
+}
+
+
+# To make project names shorter but still distinguishable, I use the
+# following abbreviations.
+PROJECT_NAME_ABBREVIATIONS = {
+    "Large Transfer": "LT",
+    "Emergency Relief": "ER",
+    "COVID-19": "C19",
+    "Basic Income": "BI",
 }
