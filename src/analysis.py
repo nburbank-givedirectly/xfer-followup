@@ -296,7 +296,7 @@ def compositional_analysis(cnts):
 
     print(
         df_dummies[
-            ["Food", "recipient_gender_Female", "recipient_age_at_contact"]
+            ["Food", "Housing", "Household", "Education", "Livestock","Savings", "Entrepreneurship", "Agriculture", "recipient_gender_Female", "recipient_age_at_contact"]
         ].corr()
     )
 
