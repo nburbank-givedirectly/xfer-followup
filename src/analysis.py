@@ -4,6 +4,8 @@ import os
 import datetime
 from typing import Dict, List
 import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 
 from helpers import get_df
@@ -280,6 +282,31 @@ def filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000):
     return df.drop("has_pick_lst", axis=1)
 
 
+def compositional_analysis(cnts):
+    """Do basic compositional analysis on Age / Gender"""
+    rcp_cnts = cnts[cnts.rcpnt_fu_num == 1].copy()
+
+    # Drop non-binary genders
+    rcp_cnts = rcp_cnts[rcp_cnts.recipient_gender.isin(["Female", "Male"])]
+
+    # Drop missing aggs
+    rcp_cnts = rcp_cnts[~rcp_cnts.recipient_age_at_contact.isnull()]
+
+    df_dummies = pd.get_dummies(rcp_cnts, columns=["recipient_gender"])
+
+    print(
+        df_dummies[
+            ["Food", "recipient_gender_Female", "recipient_age_at_contact"]
+        ].corr()
+    )
+
+    formula = "Food ~ recipient_age_at_contact + C(recipient_gender) + C(project_name)"
+
+    model = smf.logit(formula=formula, data=rcp_cnts).fit()
+
+    print(model.summary())
+
+
 def run_analysis(df, name, aggregate_to_detailed_spend_category):
     """
     Calculates one hot encoded values, then calculates the
@@ -290,8 +317,9 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
     """
     str_results = {"cur_date": datetime.datetime.now().strftime("%Y-%m-%d")}
     xls_results = []
+    diagnostics = []
 
-    # Cacl One-hot encoded counts
+    # Calc One-hot encoded counts
     ohe_chache_path = f"data_cache/{name}_ohe.pq"
     if os.path.exists(ohe_chache_path):
         ohe = pd.read_parquet(ohe_chache_path)
@@ -300,6 +328,11 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
             df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
         )
         ohe.to_parquet(ohe_chache_path)
+
+    # descriptive stats about number of categories selected
+    n_spending_cats_selected = ohe.sum(axis=1).describe()
+    str_results["mean_number_of_categories"] = n_spending_cats_selected["mean"].round(2)
+    diagnostics.append(("n_spending_cats_selected", n_spending_cats_selected))
 
     # Top responses by original categories
     summary_counts = pd.DataFrame(
@@ -323,6 +356,7 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
     ohe = ohe.T.groupby(level=0).max().T
 
     fet_cols = [
+        "rcpnt_fu_num",
         "country",
         "record_type_name",
         "project_name",
@@ -333,6 +367,7 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
         # "transfer_amount_commitment_outstanding_usd",
         "recipient_gender",
         "age_group",
+        "recipient_age_at_contact",
     ]
 
     cnts = df[fet_cols].join(ohe, how="inner")
@@ -405,7 +440,8 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
     )
     str_results["by_recipient_age_mdtbl"] = by_age.round(1).to_markdown()
     xls_results.append(("by_age", by_age))
-    str_results["full_map_of_category_aggregations_mdtbl"] = pd.DataFrame(
+
+    full_map_of_category_aggregations = pd.DataFrame(
         [
             (k, col)
             for k, cols in aggregate_to_detailed_spend_category.items()
@@ -413,10 +449,17 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
         ],
         columns=["Agg. category", "Category"],
     ).set_index("Agg. category")
+    str_results[
+        "full_map_of_category_aggregations_mdtbl"
+    ] = full_map_of_category_aggregations.to_markdown()
+    diagnostics.append(("category_aggregations", full_map_of_category_aggregations))
+
+    compositional_analysis(cnts)
 
     return {
         "str_results": str_results,
         "xls_results": xls_results,
+        "diagnostics": diagnostics,
         "df": df,
         "cnts": cnts,
     }
@@ -440,17 +483,12 @@ def dl_and_analyze_data():
 
     proj_report = cnts_by_proj(df)
     df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
-
     df = add_features(df)
-
     df = filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000)
 
-    # df = df[df.rcpnt_fu_num == 1].copy()
-    # print("Running with 1 row per recipient")
-    # run_analysis(df, "by_rcpt")
-
     results = run_analysis(df, "full", aggregate_to_detailed_spend_category)
-    results["xls_results"].append(("by_project_cnts", proj_report))
+    results["diagnostics"].append(("by_project_cnts", proj_report))
+
     return results
 
 

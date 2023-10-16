@@ -20,7 +20,7 @@ def gen_excel(xls_results, output_str, also_tsv=True):
         for sheet_name, df in xls_results:
             df.to_excel(writer, sheet_name=sheet_name, index=True, float_format="%.3f")
             if also_tsv:
-                df.to_csv(f"output/{output_str}_{sheet_name}.tsv", sep="\t")
+                df.to_csv(f"output/tsvs/{output_str}_{sheet_name}.tsv", sep="\t")
 
 
 if __name__ == "__main__":
@@ -28,6 +28,7 @@ if __name__ == "__main__":
     name = "full"
     gen_results_md(results["str_results"], name)
     gen_excel(results["xls_results"], name)
+    gen_excel(results["diagnostics"], "diagnostics")
 
     subprocess.run(
         [
