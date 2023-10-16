@@ -40,7 +40,7 @@ output: pdf_document
 - The additional lens through which we can look at is because most recipients receive multiple transfers and complete multiple follow-up surveys with us, we also have the option of whether to aggregate to our responses at the transfer level, where some recipients will respond more than once, or at the recipient level, where we simply take the most recent response we've received for a given recipient and use that in the data frame.
 
 ## Aggregating categories into more general high level categories
-- To make high-level patterns categories interpretable, I have summarized the 64 pick-list items down to 12 general categories.See the appendix for the full mapping.
+- To make high-level patterns categories interpretable, I have summarized the 64 pick-list items down to 12 general categories. See the appendix for the full mapping.
 - This aggregation of more specific categories into general categories is of course somewhat subjective.
 
 

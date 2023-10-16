@@ -73,7 +73,7 @@ def get_base_data():
         base_query = file.read()
 
     df = get_df(query=base_query, limit=0, print_q=False)
-    # start_len = len(df)
+    start_len = len(df)
     df.columns = [c.lower().rstrip("__c") for c in df.columns]
     df = df[df.res_fu_num == 1].copy()
     df = df.drop("res_fu_num", axis=1)
@@ -81,7 +81,11 @@ def get_base_data():
     df = df[df.tfr_fu_num == 1].copy()
     df = df.drop("tfr_fu_num", axis=1)
 
-    # end_len = len(df)
+    end_len = len(df)
+    print(f"The starting number of rows is {start_len}.")
+    print(
+        f"Reducing to one followup per transfer and one research row per followup results in {end_len} rows."
+    )
 
     assert len(df) == df.transfer_id.nunique() == df.fu_id.nunique()
     return df
@@ -176,6 +180,7 @@ def prop_tbl_by_cut(
     min_grp_cnt=1000,
     sort_output=True,
     abbr_col_names=True,
+    prct=True,
 ):
     """
     Given a cut or category column and a set of columns to sum over, it
@@ -197,11 +202,13 @@ def prop_tbl_by_cut(
     row_cnts = df[cut_col].value_counts()
     grp = df[([cut_col] + sum_cols)].groupby(cut_col).sum()
 
-    grp = grp.div(row_cnts, axis=0) * 100
-    grp["Obs."] = row_cnts
-    grp = grp[(["Obs."] + sum_cols)]
+    grp = grp.div(row_cnts, axis=0)
+    if prct:
+        grp *= 100
+    grp["N"] = row_cnts
+    grp = grp[(["N"] + sum_cols)]
     if sort_output:
-        grp = grp.sort_values("Obs.", ascending=False)
+        grp = grp.sort_values("N", ascending=False)
     if "All other" in grp.index:
         grp = grp.loc[[c for c in grp.index if c != "All other"] + ["All other"]]
     if abbr_col_names:
@@ -210,6 +217,67 @@ def prop_tbl_by_cut(
     grp.index.name = grp_disp_name
 
     return grp
+
+
+def cnts_by_proj(df):
+    """Caculates basic stats by project"""
+    df = df.copy()
+    start_projs = df["project_name"].unique()
+    df["completed_date"] = df["completed_date"].dt.strftime("%Y-%m-%d")
+
+    start_rows = len(df)
+    df["non_null_pick_lst"] = ~df["spending_categories"].isnull()
+    df["has_res_id"] = ~df["res_id"].isnull()
+
+    quant_spend_cols = list(set([c for c in PICK_LST_TO_QUANTS_COLS.values()]))
+    df["how_much_non_null"] = df[quant_spend_cols].notna().any(axis=1)
+
+    grp = (
+        df.groupby(["project_name"])
+        .agg(
+            N=("res_id", "size"),
+            N_unique_rcp=("recipient_id", "nunique"),
+            min_xfer_dt=("completed_date", "min"),
+            max_xfer_dt=("completed_date", "max"),
+            N_non_null_spend_cats=("non_null_pick_lst", "sum"),
+            N_non_null_how_much=("how_much_non_null", "sum"),
+            N_src_res_obj=("has_res_id", "sum"),
+        )
+        .sort_values("min_xfer_dt")
+    )
+    print(grp)
+    return grp
+
+
+def filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000):
+    df = df.copy()
+    start_projs = df["project_name"].unique()
+    start_rows = len(df)
+    df["has_pick_lst"] = ~df["spending_categories"].isnull()
+
+    df["has_res_id"] = ~df["res_id"].isnull()
+
+    non_null_by_projet = prop_tbl_by_cut(
+        df[["project_name", "has_pick_lst"]],
+        "project_name",
+        ["has_pick_lst"],
+        min_grp_cnt=None,
+        prct=False,
+    ).sort_values("has_pick_lst", ascending=False)
+
+    non_null_by_projet = non_null_by_projet[
+        non_null_by_projet["has_pick_lst"] > min_prop
+    ]
+    non_null_by_projet = non_null_by_projet[non_null_by_projet["N"] > min_N]
+
+    projs_to_include = non_null_by_projet.index
+
+    df = df[df["project_name"].isin(projs_to_include)].copy()
+
+    print(
+        f"Dropping {start_rows - len(df)} rows from { len(start_projs) - len(projs_to_include)} projects that have a non-null response rate of less than {min_prop} OR a minimum observation count less than {min_N}."
+    )
+    return df.drop("has_pick_lst", axis=1)
 
 
 def run_analysis(df, name, aggregate_to_detailed_spend_category):
@@ -314,6 +382,11 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
     xls_results.append(("by_proj", by_proj))
     str_results["by_project_mdtbl"] = by_proj.round(1)
 
+    # By country
+    by_country = prop_tbl_by_cut(cnts, "country", sum_cols, grp_disp_name="Country")
+    str_results["by_country_mdtbl"] = by_country.round(1)
+    xls_results.append(("by_country", by_country))
+
     # By gender
     by_gender = prop_tbl_by_cut(
         cnts, "recipient_gender", sum_cols, grp_disp_name="Gender"
@@ -331,6 +404,7 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
         sort_output=False,
     )
     str_results["by_recipient_age_mdtbl"] = by_age.round(1).to_markdown()
+    xls_results.append(("by_age", by_age))
     str_results["full_map_of_category_aggregations_mdtbl"] = pd.DataFrame(
         [
             (k, col)
@@ -363,14 +437,21 @@ def dl_and_analyze_data():
     )
 
     df = get_base_data()
-    df = add_features(df)
+
+    proj_report = cnts_by_proj(df)
     df = df.set_index(["recipient_id", "transfer_id", "fu_id"])
+
+    df = add_features(df)
+
+    df = filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000)
 
     # df = df[df.rcpnt_fu_num == 1].copy()
     # print("Running with 1 row per recipient")
     # run_analysis(df, "by_rcpt")
 
-    return run_analysis(df, "full", aggregate_to_detailed_spend_category)
+    results = run_analysis(df, "full", aggregate_to_detailed_spend_category)
+    results["xls_results"].append(("by_project_cnts", proj_report))
+    return results
 
 
 if __name__ == "__main__":

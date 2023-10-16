@@ -137,10 +137,10 @@ def mk_val_query(filename: str) -> None:
     query = f"""
     SELECT count(*) AS num_trans,
              count(distinct transfer_id) AS transfer_ids,
-             sum(case WHEN fu.CreatedDate is NULL THEN 1 ELSE 0 end) AS non_null_cnt, 
-             sum(case WHEN fu.CreatedDate is NULL THEN 1 ELSE 0 end) / count(*) AS prop_overall,
-             sum(case WHEN fu.What_Did_The_Recipient_Spend_On__c is NULL THEN 1 ELSE 0 end) AS spend_cat_non_null_cnt,
-             sum(case WHEN fu.What_Did_The_Recipient_Spend_On__c is NULL THEN 1 ELSE 0 end) / count(*) AS spend_cat_prop_overall
+             sum(case WHEN fu.CreatedDate is NULL THEN 0 ELSE 1 end) AS non_null_cnt, 
+             sum(case WHEN fu.CreatedDate is NULL THEN 0 ELSE 1 end) / count(*) AS prop_overall,
+             sum(case WHEN fu.What_Did_The_Recipient_Spend_On__c is NULL THEN 0 ELSE 1 end) AS spend_cat_non_null_cnt,
+             sum(case WHEN fu.What_Did_The_Recipient_Spend_On__c is NULL THEN 0 ELSE 1 end) / count(*) AS spend_cat_prop_overall
 
     FROM common.field_metrics_transfers t
     LEFT JOIN silver.field_salesforce_followup fu
