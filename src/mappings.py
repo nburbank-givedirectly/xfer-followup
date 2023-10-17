@@ -444,6 +444,8 @@ OTHER_AGGREGATE_SPEND_CATIGORIES = [
     "Debt",
 ]
 
+VICE_CATEGORIES = ["Commercial sex", "Gambling", "Alcohol or drugs"]
+
 # It's sometimes useful to present these categories in a space-saving manner
 AGGREGATE_CATEGORY_ABBREVIATIONS = {
     "Obs.": "N",

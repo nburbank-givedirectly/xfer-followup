@@ -29,6 +29,7 @@ if __name__ == "__main__":
     gen_results_md(results["str_results"], name)
     gen_excel(results["xls_results"], name)
     gen_excel(results["diagnostics"], "diagnostics")
+    gen_excel(results["xls_cnts"], "cat_cnts")
 
     subprocess.run(
         [
