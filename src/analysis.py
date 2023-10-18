@@ -72,6 +72,10 @@ def check_cnts():
     with open("queries/val_query.sql", "r", encoding="utf-8") as file:
         query = file.read()
     df_cnts = get_df(query=query, limit=0, print_q=False)
+    RESULTS["str_results"]["prop_xfers_w_flup"] = (
+        (df_cnts["prop_overall"] * 100).values[0].round(1)
+    )
+    RESULTS["diagnostics"].append(("xfers_and_flup_cnts", df_cnts))
     print(df_cnts)
 
 

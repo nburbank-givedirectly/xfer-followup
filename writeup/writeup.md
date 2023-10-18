@@ -23,7 +23,7 @@ output: pdf_document
 ## Dataset definition 
 
 
-The data for this analysis is derived from follow-up surveys, which are conducted with most recipients after a transfer is completed. Specifically, 84%[^4] of transfers in the last three years have included a successfully completed follow-up survey. These follow-up surveys include two sets of questions that provide insight into how recipients spend their transfers. 
+The data for this analysis is derived from follow-up surveys, which are conducted with most recipients after a transfer is completed. Specifically, {prop_xfers_w_flup}% of transfers in the last three years have included a successfully completed follow-up survey. These follow-up surveys include two sets of questions that provide insight into how recipients spend their transfers. 
 
 First, a multi-option pick list question lets recipients select one or more from a set of approximately 60 predefined spending categories to indicate that at least part of their transfer was spent on the selected category or categories. And second, a series of quantitative questions that enables recipients to provide proportional estimates describing specifically how much of a given transfer was spent within a set of predefined categories.[^2] While answers to the second set of questions are more precise than the multi-option question, to date responses to the second set of questions have only been collected within a small number of projects.[^3] For this reason, this analysis focuses on analyzing the less informative but more numerous answers to the first question type. I further filtered the dataset down to projects with completed transfers after January 1st, 2020 that had at least 1000 completed follow up survey responses and at least an 80% completion rate for the `What Did The Recipient Spend On` question. This resulted in a dataset of approximately {N_obs}k observations from {N_rcp}k recipients in {N_proj} projects across {N_countries} countries.
 
@@ -33,7 +33,6 @@ First, a multi-option pick list question lets recipients select one or more from
 - For many aggregations, we can choose to weight aggregations by recipient, including only one (the most recent) response per recipient, or by response, giving higher weight to recipients with multiple transfers. In this document, aggregations are weighted by response, unless specified otherwise. For most of the questions I've analyzed the choice of weighting method does not substantially affect the results.
 - Ineligible, discarded, written off, refused recipients are filtered out of this dataset.
 
-[^4]: I need to double check this figure.
 [^1]: In Field Salesforce, this is the `What Did The Recipient Spend On` [question](https://givedirectly-field.my.salesforce.com/00N0b00000BuyeP?appLayout=setup&entityId=01I0b000001NFO0&noS1Redirect=true) within the Followup Object and the `Spending_Categories` [question](https://givedirectly-field.lightning.force.com/lightning/setup/ObjectManager/01I5a0000017dHL/FieldsAndRelationships/00N5a00000CsZNr/view) within the research object.
 [^2]:These are sometimes referred to as the `how much spent on` questions. 
 [^3]: Most notably these questions were asked to recipients within the _Malawi Canva Basic Income Pilot_ and the _Liberia Maryland Basic Income_ programs.  

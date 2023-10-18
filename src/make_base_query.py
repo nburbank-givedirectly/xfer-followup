@@ -147,7 +147,6 @@ def mk_val_query(filename: str) -> None:
         ON fu.Transfer__c = t.transfer_id
             AND fu.IsDeleted = FALSE
             AND fu.Is_Successful__c = TRUE
-            AND fu.Has_Transfer_Been_Collected__c = TRUE
     WHERE t.transfer_status = 'Complete'
             AND t.recipient_inactive_stage = 0
             AND t.transfer_created_date >= '{START_DT}'

@@ -20,7 +20,6 @@ FROM common.field_metrics_transfers t
 LEFT JOIN silver.field_salesforce_followup fu ON fu.Transfer__c = t.transfer_id
 AND fu.IsDeleted = FALSE
 AND fu.Is_Successful__c = TRUE
-AND fu.Has_Transfer_Been_Collected__c = TRUE
 WHERE t.transfer_status = 'Complete'
   AND t.recipient_inactive_stage = 0
   AND t.transfer_created_date >= '2020-01-01'
