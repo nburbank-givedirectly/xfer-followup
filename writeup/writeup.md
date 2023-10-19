@@ -33,6 +33,7 @@ First, a multi-option pick list question lets recipients select one or more from
 - For many aggregations, we can choose to weight aggregations by recipient, including only one (the most recent) response per recipient, or by response, giving higher weight to recipients with multiple transfers. In this document, aggregations are weighted by response, unless specified otherwise. For most of the questions I've analyzed the choice of weighting method does not substantially affect the results.
 - Ineligible, discarded, written off, refused recipients are filtered out of this dataset.
 
+[^4]: I need to double check this figure.
 [^1]: In Field Salesforce, this is the `What Did The Recipient Spend On` [question](https://givedirectly-field.my.salesforce.com/00N0b00000BuyeP?appLayout=setup&entityId=01I0b000001NFO0&noS1Redirect=true) within the Followup Object and the `Spending_Categories` [question](https://givedirectly-field.lightning.force.com/lightning/setup/ObjectManager/01I5a0000017dHL/FieldsAndRelationships/00N5a00000CsZNr/view) within the research object.
 [^2]:These are sometimes referred to as the `how much spent on` questions. 
 [^3]: Most notably these questions were asked to recipients within the _Malawi Canva Basic Income Pilot_ and the _Liberia Maryland Basic Income_ programs.  
