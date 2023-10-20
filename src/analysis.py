@@ -171,7 +171,7 @@ def add_features(df):
 
     bins = [0, 19, 29, 39, 49, 59, 69, 79, 89, 150]
     labels = [
-        "0-19",
+        "13-19",
         "20-29",
         "30-39",
         "40-49",
@@ -425,13 +425,34 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
         ohe.to_parquet(ohe_chache_path)
 
     # descriptive stats about number of categories selected
-    n_spending_cats_selected = (
-        ohe[[c for c in ohe.columns if c != ("rcpnt_fu_num", "")]]
-        .sum(axis=1)
-        .describe()
+    n_spending_cats_selected = ohe[
+        [c for c in ohe.columns if c != ("rcpnt_fu_num", "")]
+    ].sum(axis=1)
+    n_spending_cats_selected.name = "n_spend_cats"
+
+    n_spend_df = pd.concat(
+        [df[["recipient_gender", "age_group"]], n_spending_cats_selected], axis=1
     )
-    str_results["mean_number_of_categories"] = n_spending_cats_selected["mean"].round(2)
-    diagnostics.append(("n_spending_cats_selected", n_spending_cats_selected))
+
+    by_gender = n_spend_df.groupby(["recipient_gender"]).describe()
+    by_age = n_spend_df.groupby(["age_group"]).describe()
+
+    str_results["mean_number_of_categories"] = n_spending_cats_selected.mean().round(2)
+    str_results["mean_number_of_categories_female"] = by_gender.loc["Female"][
+        ("n_spend_cats", "mean")
+    ].round(2)
+    str_results["mean_number_of_categories_male"] = by_gender.loc["Male"][
+        ("n_spend_cats", "mean")
+    ].round(2)
+
+    diagnostics.append(
+        (
+            "n_s_cats_by_age_gen",
+            n_spend_df[n_spend_df["recipient_gender"].isin(["Male", "Female"])]
+            .groupby(["age_group", "recipient_gender"])
+            .describe(),
+        )
+    )
 
     summary_counts = categories_by_response_rate(ohe, "cats_by_respondent")
 
