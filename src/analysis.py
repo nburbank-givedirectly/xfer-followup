@@ -69,7 +69,7 @@ def mk_category_aggregations_spend(
 
 def check_cnts():
     """Run diagnostic counts query and print results."""
-    with open("queries/val_query.sql", "r", encoding="utf-8") as file:
+    with open("queries/prop_xfers_w_flup.sql", "r", encoding="utf-8") as file:
         query = file.read()
     df_cnts = get_df(query=query, limit=0, print_q=False)
     RESULTS["str_results"]["prop_xfers_w_flup"] = (

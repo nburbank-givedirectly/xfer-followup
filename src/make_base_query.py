@@ -162,4 +162,4 @@ def mk_val_query(filename: str) -> None:
 
 if __name__ == "__main__":
     mk_base_query(filename="queries/base_query")
-    mk_val_query(filename="queries/val_query")
+    mk_val_query(filename="queries/prop_xfers_w_flup")
