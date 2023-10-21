@@ -42,6 +42,7 @@ if __name__ == "__main__":
             "-o",
             "output/output_full.docx",
             "--reference-doc=writeup/custom-reference.docx",
+            "--extract-media", "./figures"
         ]
     )
     # df = df[df.rcpnt_fu_num == 1].copy()

@@ -14,11 +14,11 @@ output: pdf_document
 
 # Key takeaways  
 
-- Food is the most common reported expense category. 59.7% of respondents report spending part or all of their transfer on food.
-- {top_aggregated_response_categories_note}
+- {most_popular_category} is the most common reported expense category among Give Directly's recipients. {most_popular_category_prct}% of respondents report spending part or all of their transfer on food.
+- {prop_w_resp_in_top_5}% of surveyed recipients indicated that they spent at least part of their transfer on one or more of {top_5_str} expenses.
 - Only {vice_prct}% of respondents, or slightly more than 1 in 1000 respondents, report spending any part of their transfer on a "vice activity" (Alcohol, drugs, etc.). 
 - There is substantial variation in response patterns [by project, country, age, and gender](https://docs.google.com/spreadsheets/d/1PuFqGpOftwJiY92f6HUSA-15MTaYTjHdsF1J_lvc0sU/edit?usp=sharing).
-- After accounting for compositional differences across projects, there is evidence for a mild positive association between female gender and spending on food, education, and entrepreneurship activities, and a negative association with agriculture activities. Additionally, older recipients are more likely to report spending on food and less likely to report spending on entrepreneurship activities.
+- After accounting for compositional differences across projects and adjusting for aforementioned response bias, there is evidence for a mild positive association between female gender and spending on food, education, and entrepreneurship activities, and a negative association with agriculture activities. Additionally, older recipients are more likely to report spending on food and less likely to report spending on entrepreneurship activities.
 
 ## Dataset definition 
 
@@ -29,7 +29,7 @@ First, a multi-option pick list question lets recipients select one or more from
 
 ####  Additional notes 
 - In the `What Did The Recipient Spend On` question, recipients can indicate 0, 1, or multiple categories from a pre-selected list of expense categories that they spent some or all of their transfer on. There are multiple variations of this question that this analysis aggregates over. The most common variant has 48 distinct options; a recently expanded variant contains 64 distinct options. However, in practice, only 16 options are commonly selected by recipients. 
-- The average response to a followup survey containing a non-null response included  {mean_number_of_categories} selected categories. However, there is substantial variation by gender within this count with {mean_number_of_categories_female}  average responses for female recipients and {mean_number_of_categories_male} average responses for male recipients.
+- On average, respondents selected {mean_number_of_categories} categories in response to "`What Did The Recipient Spend On` " question. However, there is significant variation in this count across demographic subgroups. Female recipients selected an average of {mean_number_of_categories_female} categories, which is {mean_number_of_categories_gender_diff} more categories than the average male recipient who selected {mean_number_of_categories_male} categories. Moreover, older recipients, regardless of gender, selected more categories compared to younger recipients on average. These two trends make it challenging to distinguish differences in spending patterns among demographic subgroups from differences in the inclination to provide a more or less detailed breakdown of primary expense categories. See the appendix for more on these differences.
 - For many aggregations, we can choose to weight aggregations by recipient, including only one (the most recent) response per recipient, or by response, giving higher weight to recipients with multiple transfers. In this document, aggregations are weighted by response, unless specified otherwise. For most of the questions I've analyzed the choice of weighting method does not substantially affect the results.
 - Ineligible, discarded, written off, refused recipients are filtered out of this dataset.
 
@@ -72,3 +72,10 @@ If I were to spend more time on this analysis, this would be the areas I would f
 - Checking whether the proportions within the quantitative how much spending columns match the patterns observed within the what did the recipient spend on pick list question.
 - More analysis and robustness checks to assess the scale of the demographic associations between recipient characteristics and the stated expenditure patterns described above.
 
+## Appendix
+
+The plot below presents the mean number of expense categories chosen by recipients, classified by both gender and age. Each data point represents the average number of categories selected by a specific gender within a specific age group. The error bars indicate two standard errors from the mean.
+
+![Number of expense categories selected](figures/cat_selected.png)
+
+Both the age the gender differences in the number of categories selected are apparent: female recipients are more likely to select a larger number of expense categories than male recipients across all age groups. Additionally, older recipients are more likely to select a larger number of expense categories than younger recipients across both genders.
