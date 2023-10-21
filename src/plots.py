@@ -24,8 +24,8 @@ def expense_cats_plot(n_spend_df: pd.DataFrame) -> None:
     )
     ax.errorbar(
         means.loc["Female"].index,
-        means.loc["Female"]["n_spend_cats"],
-        yerr=std_errors.loc["Female"]["n_spend_cats"],
+        means.loc["Female"]["cat_cnt"],
+        yerr=std_errors.loc["Female"]["cat_cnt"],
         fmt="none",
         ecolor="blue",
         capsize=4,
@@ -39,8 +39,8 @@ def expense_cats_plot(n_spend_df: pd.DataFrame) -> None:
     )
     ax.errorbar(
         means.loc["Male"].index,
-        means.loc["Male"]["n_spend_cats"],
-        yerr=std_errors.loc["Male"]["n_spend_cats"],
+        means.loc["Male"]["cat_cnt"],
+        yerr=std_errors.loc["Male"]["cat_cnt"],
         fmt="none",
         ecolor="green",
         capsize=4,
