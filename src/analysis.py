@@ -163,7 +163,7 @@ def gen_multi_level_spend(df, category_aggregations_spend):
     return spend_df.fillna(0).sort_index(axis=1).T.groupby(level=0).sum().T
 
 
-def add_features(df):
+def add_features(df, aggregate_to_detailed_spend_category):
     """Add age group and abbreviated project name columns to dataframe"""
     # df["project_name"] = (
     #     df["project_name"].replace(PROJECT_NAME_ABBREVIATIONS, regex=True).str.strip()
@@ -185,7 +185,26 @@ def add_features(df):
         df["recipient_age_at_contact"], bins=bins, labels=labels, right=False
     )
 
-    return df
+
+    # Calc One-hot encoded counts
+    ohe_chache_path = f"data_cache/ohe.pq"
+    if os.path.exists(ohe_chache_path):
+        ohe = pd.read_parquet(ohe_chache_path)
+    else:
+        ohe = split_and_ohe_str_lst(
+            df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
+        )
+        ohe.to_parquet(ohe_chache_path)
+
+    ohe.columns = pd.MultiIndex.from_tuples([('ohe',c[0], c[1]) for c in ohe.columns])
+
+    df.columns = pd.MultiIndex.from_tuples([(c,'', '') for c in df.columns])
+
+    # Drop obs with null spend cats
+    df = df.join(ohe, how='inner')
+    # Add in count of catagories selected
+    df['sel_cat_cnt'] = df['ohe'].sum(axis=1)
+    return df  
 
 
 def prop_tbl_by_cut(
@@ -405,7 +424,7 @@ def categories_by_response_rate(ohe: pd.DataFrame, name: str) -> pd.DataFrame:
     return summary_counts
 
 
-def run_analysis(df, name, aggregate_to_detailed_spend_category):
+def run_analysis(df, name, ):
     """
     Calculates one hot encoded values, then calculates the
     proportion of those one hot encoded values over a number of cut
@@ -418,27 +437,11 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
     xls_results = RESULTS["xls_results"]
     diagnostics = RESULTS["diagnostics"]
 
-    # Calc One-hot encoded counts
-    ohe_chache_path = f"data_cache/{name}_ohe.pq"
-    if os.path.exists(ohe_chache_path):
-        ohe = pd.read_parquet(ohe_chache_path)
-    else:
-        ohe = split_and_ohe_str_lst(
-            df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
-        )
-        ohe.to_parquet(ohe_chache_path)
 
     # descriptive stats about number of categories selected
-    n_spending_cats_selected = ohe.sum(axis=1)
-    n_spending_cats_selected.name = "n_spend_cats"
 
-    n_spend_df = pd.merge(
-        df[["recipient_gender", "age_group"]],
-        n_spending_cats_selected,
-        left_index=True,
-        right_index=True,
-        how="inner",
-    )
+    n_spend_df = df[["recipient_gender", "age_group", "sel_cat_cnt"]]
+    n_spend_df.columns = [c[0] for c in n_spend_df.columns]
 
     by_gender = n_spend_df.groupby(["recipient_gender"]).describe()
     by_age = n_spend_df.groupby(["age_group"]).describe()
@@ -464,32 +467,29 @@ def run_analysis(df, name, aggregate_to_detailed_spend_category):
     str_results["p_val_diff_in_cnt_of_resp_by_gender"] = round(p_value, 3)
     str_results["t_stat_diff_in_cnt_of_resp_by_gender"] = round(t_statistic, 3)
 
-    # ohe = ohe[n_spend_df['n_spend_cats'] == 1].copy()
 
-    summary_counts = categories_by_response_rate(ohe, "cats_by_respondent")
+    summary_counts = categories_by_response_rate(df['ohe'], "cats_by_respondent")
 
     num_w_over_1_prct = summary_counts[summary_counts.Prct > 1]
     num_w_under_1_prct = summary_counts[summary_counts.Prct <= 1]
 
-    RESULTS["str_results"]["top_response_categories_by_response_mdtbl"] = (
+    str_results["top_response_categories_by_response_mdtbl"] = (
         num_w_over_1_prct.reset_index(names=["Agg. category", "Category"])
         .round(1)
         .to_markdown(index=False)
     )
     str_results["top_response_categories_note_by_response"] = f"Among the original categories, there were {len(summary_counts)} that received responses, with only {len(num_w_over_1_prct)} response types that were selected by over 1% of respondents. All other responses only contributed for {num_w_under_1_prct['N'].sum()} responses."
 
-    import IPython; IPython.embed()
 
-    categories_by_response_rate(ohe.loc[1, :], "cats_by_recipient")
+    categories_by_response_rate(df['ohe'].loc[1, :], "cats_by_recipient")
 
     # Vice count
-    vice_prct = (
-        ohe[[("Other", c) for c in VICE_CATEGORIES]].sum().sum() / len(ohe)
-    ) * 100
+    vice_prct = (df['ohe'][[("Other", c) for c in VICE_CATEGORIES]].sum().sum() / len(df)) * 100
     str_results["vice_prct"] = round(vice_prct, 2)
 
     # For rest of analysis, sum up to higher level categories
-    ohe = ohe.T.groupby(level=0).max().T
+    import IPython; IPython.embed()
+    df['ohe'] = df['ohe'].T.groupby(level=0).max().T
 
     fet_cols = [
         "country",
@@ -615,9 +615,10 @@ def dl_and_analyze_data():
     proj_report = cnts_by_proj(df, min_prop=0.8, min_N=1000)
     df = filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000)
     df = df.set_index(["rcpnt_fu_num","recipient_id", "transfer_id", "fu_id"])
-    df = add_features(df)
+    df = add_features(df, aggregate_to_detailed_spend_category)
 
-    run_analysis(df, "full", aggregate_to_detailed_spend_category)
+    import IPython; IPython.embed()
+    run_analysis(df, "full")
     RESULTS["diagnostics"].append(("by_project_cnts", proj_report))
 
     return RESULTS
