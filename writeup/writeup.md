@@ -14,7 +14,7 @@ output: pdf_document
 
 # Key takeaways  
 
-- Among Give Directly's recipients, {most_popular_category_prct:.1%} report spending part or all of their transfer on {most_popular_category}, making it the most commonly reported expense category.
+- Among Give Directly recipients, {most_popular_category_prct:.1%} report spending part or all of their transfer on {most_popular_category}, making it the most commonly reported expense category.
 - {prop_w_resp_in_top_5:.1%} of surveyed respondents indicated that they spent at least part of their transfer on one or more of {top_5_str} expenses.
 - Only {vice_prct:.2%} of respondents, or slightly more than 1 in 1000 respondents, report spending any part of their transfer on a "vice activity" (Alcohol, drugs, etc.). 
 - The number of expense categories recipients typically choose varies significantly by age and gender, with female and older recipients choosing more categories on average.
@@ -45,7 +45,7 @@ The table below displays the 10 aggregated expense categories with three columns
 
 {top_aggregated_response_categories_mdtbl}
 
-Among these higher level categories, food is the most popular reported expense category, with {prop_w_resp_in_top_5:.1%} of surveyed recipients indicated that they spent at least part of their transfer on one or more of {top_5_str} expenses. Food accounts for {most_popular_category_iw_prct:.1%} of transfer expenditures on an inverse-weighted basis, with the top five categories accounting for {prop_in_top_5_cats:.1%} overall. 
+Among these higher level categories, food is the most popular reported expense category, with {prop_w_resp_in_top_5:.1%} of surveyed recipients indicating that they spent at least part of their transfer on one or more of {top_5_str} expenses. Food accounts for {most_popular_category_iw_prct:.1%} of transfer expenditures on an inverse-weighted basis, with the top five categories accounting for {prop_in_top_5_cats:.1%} overall. 
 
 One potential concern arises from the fact that some programs have more transfers than others. When we weigh the data by the number of responses rather than by number of unique recipients, it might skew the results in favor of those specific programs. To address this, I've included a version of this table in the appendix filtered to only inlaced one response per recipient. The rank ordering of categories is almost identical.
 
@@ -55,7 +55,7 @@ Aggregating categories is useful to see overall trends, but it is somewhat arbit
 
 {top_response_categories_by_response_mdtbl}
 
-The full table of response weighted expense category counts and percentages can be found in the which can be found in [detailed_cats](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=210478292) tab of the project results spreadsheet.
+The full table of response weighted expense category counts and percentages can be found in the [detailed_cats](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=210478292) tab of the project results spreadsheet.
 
 
 #### Spending on "vice" categories   
@@ -74,7 +74,7 @@ The following table contains the top five regression coefficients, standard erro
 
 {lpm_by_predictors_sorted_mdtbl}
 
-There appears to be a mild positive associations between female gender and spending on food, age and spending on food, male gender and spending on agriculture, and age and spending on healthcare. Additionally, there is a negative association between entrepreneurship (or business activities) and advanced age. 
+There appears to be a mild positive association between female gender and spending on food, age and spending on food, male gender and spending on agriculture, and age and spending on healthcare. Additionally, there is a negative association between entrepreneurship (or business activities) and advanced age. 
 
 ### Additional notes 
 
@@ -107,7 +107,7 @@ The plot below presents the mean number of expense categories chosen by recipien
 
 ![Number of expense categories selected](output/cat_selected.png)
 
-Both the age the gender differences in the number of categories selected are apparent: female recipients are more likely to select a larger number of expense categories than male recipients across all age groups. Additionally, older recipients are more likely to select a larger number of expense categories than younger recipients across both genders.
+Both the age and gender differences in the number of categories selected are apparent: female recipients are more likely to select a larger number of expense categories than male recipients across all age groups. Additionally, older recipients are more likely to select a larger number of expense categories than younger recipients across both genders.
 
 ### Recipient-weighted aggregated expense categories counts
 
@@ -115,7 +115,7 @@ One concern with the table above is that we are over-weighting responses from re
 
 {top_aggregated_response_categories_rcp_mdtbl}
 
-With the exception of the Entrepreneurship and household categories, is the same is in the version that is normalized by respondents.
+With the exception of the Entrepreneurship and household categories, the order is same is in the version that is weighted by the number of respondents in the main text.
 
 ### Regression specification for demographic factor models 
 
@@ -133,7 +133,7 @@ Where:
 We're primarily interested in $\beta_1$ and $\beta_2$, the fit coefficients for gender and age.
 
 
-[^1]: The base data bricks query is [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/base_query.sql). Survey records in the research object were linked to transfers via followup records with identical recipient ids and similar timestamps. In rare cases transfers can be linked to more than one successfully completed followup survey. In these cases, only the most recent survey record was used.
+[^1]: The base data bricks query is [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/base_query.sql). Survey records in the research object were linked to transfers via follow up records with identical recipient ids and similar timestamps. In rare cases transfers can be linked to more than one successfully completed followup survey. In these cases, only the most recent survey record was used.
 
 [^2]: The numerator for [this proportion](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/prop_xfers_w_flup.sql) is the count of successful follow-up records that can be matched to a transfer id and have a `recipient_inactive_stage` of 0. The denominator is the count of all complete transfers with a creation date between October 1st, 2019 and September 30th, 2023.
 
