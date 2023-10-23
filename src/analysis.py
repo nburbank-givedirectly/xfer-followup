@@ -390,6 +390,19 @@ def categories_by_response_rate(ohe: pd.DataFrame, name: str) -> pd.DataFrame:
     return summary_counts
 
 
+def add_xls_note():
+    notes = [
+        f"This analysis was generated on {datetime.datetime.now().strftime('%m/%d/%y')}.",
+        f"This data set is a roll-up of responses to the Spending Categories question between October of 2019 and October of 2023."
+        f"Projects with fewer than a {MIN_PROJ_N} responses or a completion rate of less than {MIN_PROJ_PROP:.0%} in response to the Spending Categories question are excluded. Recipients who are ineligible, discarded, written off, and refused recipients were also filtered out.",
+        "N represents the number of respondents. Recipients who completed more than one transfer and follow-up survey within the analysis period are counted multiple times.",
+        "Percentage columns show the raw percentage of respondents selecting a particular category. Note that most respondents select more than one category, so these percentages will add up to more than 100%.",
+        "The Inverse Weighted (IW) percentage columns represents the inverse weighted percentage of respondents, or the percentage normalized based on the number of categories each respondent picked. For respondent chooses multiple categories, these columns encode the assumption that their transfer spending is split evenly among those selected categories.",
+    ]
+
+    RESULTS["xls_results"].append(("notes", pd.DataFrame(notes, columns=["Notes"])))
+
+
 def dataset_desc_stats(df):
     """Overall descriptive stats on filtered dateset"""
     str_res = RESULTS["str_results"]
@@ -717,6 +730,7 @@ def dl_and_analyze_data():
     number_of_cats_desc_stats(df)
     analyze_category_props_by_group(df)
     demo_factor_analysis(df)
+    add_xls_note()
     RESULTS["diagnostics"].append(("by_project_cnts", proj_report))
 
     return RESULTS

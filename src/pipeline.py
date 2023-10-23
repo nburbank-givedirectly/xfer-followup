@@ -2,6 +2,7 @@
 import subprocess
 import pandas as pd
 import os
+from datetime import datetime
 from analysis import dl_and_analyze_data
 
 
@@ -38,7 +39,7 @@ def gen_results_md(results, name) -> None:
     output_str = escape_brackets(templete)
     output_str = output_str.format(**results)
 
-    with open(f"output/output_{name}.md", "w") as file:
+    with open(f"output/{name}.md", "w") as file:
         file.write(output_str)
 
 
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     if not os.path.exists("output"):
         os.makedirs("output")
     results = dl_and_analyze_data()
-    name = "full"
+    name = f"{datetime.now().date().strftime('%Y%m%d')}_xfer_flup"
     gen_results_md(results["str_results"], name)
     gen_excel(results["xls_results"], name)
     gen_excel(results["diagnostics"], "diagnostics")
@@ -94,9 +95,9 @@ if __name__ == "__main__":
             "pandoc",
             "-f",
             "markdown-auto_identifiers",
-            "output/output_full.md",
+            f"output/{name}.md",
             "-o",
-            "output/output_full.docx",
+            f"output/{name}.docx",
             "--reference-doc=writeup/custom-reference.docx",
             "--extract-media",
             "./figures",

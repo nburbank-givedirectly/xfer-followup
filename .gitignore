@@ -163,3 +163,4 @@ cython_debug/
 data_cache/*
 output/*
 src/nb_secrets.py
+figures/*
