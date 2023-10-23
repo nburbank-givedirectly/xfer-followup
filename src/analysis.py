@@ -18,6 +18,10 @@ from mappings import (
 )
 from plots import expense_cats_plot
 
+# Min number of non-null responsese for project to be included
+MIN_PROJ_N = 1000
+# Min proportion of follow-up surveys for which spending category question is non-null.
+MIN_PROJ_PROP = 0.8
 
 RESULTS = {
     "str_results": {},
@@ -27,11 +31,23 @@ RESULTS = {
 }
 
 
+def check_prop_xfers_w_flup_survey():
+    """Run diagnostic counts query and print results."""
+    with open("queries/prop_xfers_w_flup.sql", "r", encoding="utf-8") as file:
+        query = file.read()
+    df_cnts = get_df(query=query, limit=0, print_q=False)
+    RESULTS["str_results"]["prop_xfers_w_flup"] = (
+        (df_cnts["prop_overall"] * 100).values[0].round(1)
+    )
+    RESULTS["diagnostics"].append(("xfers_and_flup_cnts", df_cnts))
+    print(df_cnts)
+
+
 def further_group_agg_spend_catigories(
     aggregate_to_detailed_spend_category: Dict[str, List[str]],
     other_aggregate_spend_catigories: List[str],
 ) -> Dict[str, List[str]]:
-    """further group rarely used aggregate categories under other for easier analysis"""
+    """Further group rarely used aggregate categories under other for easier analysis"""
 
     for k in other_aggregate_spend_catigories:
         aggregate_to_detailed_spend_category["Other"] = (
@@ -81,18 +97,6 @@ def mk_category_aggregations_spend(
     return category_aggregations_spend
 
 
-def check_cnts():
-    """Run diagnostic counts query and print results."""
-    with open("queries/prop_xfers_w_flup.sql", "r", encoding="utf-8") as file:
-        query = file.read()
-    df_cnts = get_df(query=query, limit=0, print_q=False)
-    RESULTS["str_results"]["prop_xfers_w_flup"] = (
-        (df_cnts["prop_overall"] * 100).values[0].round(1)
-    )
-    RESULTS["diagnostics"].append(("xfers_and_flup_cnts", df_cnts))
-    print(df_cnts)
-
-
 def get_base_data():
     """Run the base query and then filter to just one
     follow-up survey / research record per transfer.
@@ -113,11 +117,16 @@ def get_base_data():
     end_len = len(df)
     print(f"The starting number of rows is {start_len}.")
     print(
-        f"Reducing to one followup per transfer and one research row per followup results in {end_len} rows."
+        f"Reducing to one followup per transfer and one research row per followup dropped {start_len - end_len} rows resulting in {end_len} rows."
     )
 
-    assert len(df) == df.transfer_id.nunique() == df.fu_id.nunique()
+    assert (
+        len(df) == df.transfer_id.nunique() == df.fu_id.nunique()
+    ), "Number of followup and transfer IDs don't match"
     return df
+
+
+# Feature creation
 
 
 def split_and_ohe_str_lst(df, col, category_aggregations, agg=True):
@@ -178,10 +187,15 @@ def gen_multi_level_spend(df, category_aggregations_spend):
 
 def add_features(df, aggregate_to_detailed_spend_category):
     """Add age group and abbreviated project name columns to dataframe"""
-    df["project_name_short"] = (
+
+    # Set index
+    df = df.set_index(["rcpnt_fu_num", "recipient_id", "transfer_id", "fu_id"])
+
+    df["proj_name"] = (
         df["project_name"].replace(PROJECT_NAME_ABBREVIATIONS, regex=True).str.strip()
     )
 
+    # Add age group feature
     bins = [0, 19, 29, 39, 49, 59, 69, 79, 89, 150]
     age_labels = [
         "13-19",
@@ -213,10 +227,25 @@ def add_features(df, aggregate_to_detailed_spend_category):
     df = df.join(ohe, how="inner")
     df = df.join(agg_ohe, how="inner")
 
-    # Add in count of catagories selected
+    # Add in count of categories selected
     df["cat_cnt"] = df["ohe"].sum(axis=1)
     df["agg_cat_cnt"] = df["agg_ohe"].sum(axis=1)
-    df = df.drop("spending_categories", axis=1)
+
+    # Normalize by number of selected categories from each respondent
+    norm_ohe = df["ohe"].div(df["cat_cnt"].values, axis=0)
+    norm_ohe.columns = pd.MultiIndex.from_tuples(
+        [("norm_ohe", c[0], c[1]) for c in norm_ohe.columns]
+    )
+    norm_agg_ohe = df["agg_ohe"].div(df["agg_cat_cnt"].values, axis=0)
+    norm_agg_ohe.columns = pd.MultiIndex.from_tuples(
+        [("norm_agg_ohe", c[0], c[1]) for c in norm_agg_ohe.columns]
+    )
+    df = df.join(norm_ohe, how="inner")
+    df = df.join(norm_agg_ohe, how="inner")
+
+    df = df.sort_index(axis=0)
+    df = df.sort_index(axis=1)
+    df = df.drop("spending_categories", axis=1, level=0)
     return df
 
 
@@ -228,14 +257,19 @@ def prop_tbl_by_cut(
     min_grp_cnt=1000,
     sort_output=True,
     abbr_col_names=True,
-    prct=True,
+    prct=False,
 ):
     """
     Given a cut or category column and a set of columns to sum over, it
     calculates the proportion of sums within each category value. Also
     calculates an 'All other' row for category values with few observations.
     """
-    df = df.copy().sort_index(axis=1)
+    df = df[[cut_col, sum_cols]].copy()
+    sum_cols_lst = list(df[sum_cols].columns)
+    # Hack for multi-index issues
+    df.columns = [
+        c[1] if c[0] in ("agg", "agg_ohe", "norm_agg_ohe") else c[0] for c in df.columns
+    ]
 
     if grp_disp_name is None:
         grp_disp_name = cut_col
@@ -248,13 +282,14 @@ def prop_tbl_by_cut(
         df.loc[df[cut_col].isin(categories_below_threshold), cut_col] = "All other"
 
     row_cnts = df[cut_col].value_counts()
-    grp = df[[cut_col, sum_cols]].groupby(cut_col).sum()
-    grp = grp[sum_cols]  # Drop level
+    grp = df.groupby(cut_col).sum()
+
     grp = grp.div(row_cnts, axis=0)
     if prct:
         grp *= 100
     grp["N"] = row_cnts
-    grp = grp[(["N"] + [c for c in df[sum_cols].columns])]
+
+    grp = grp[["N"] + sum_cols_lst]
     if sort_output:
         grp = grp.sort_values("N", ascending=False)
     if "All other" in grp.index:
@@ -303,51 +338,270 @@ def cnts_by_proj(df, min_prop=0.8, min_N=1000):
 def filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000):
     """Filter out observations from projects with either a small number of observations or a high rate of nulls."""
     df = df.copy()
-    str_results = RESULTS["str_results"]
     start_projs = df["project_name"].unique()
     start_rows = len(df)
     df["non_null_pick_lst"] = ~df["spending_categories"].isnull()
 
     df["has_res_id"] = ~df["res_id"].isnull()
 
-    non_null_by_projet = prop_tbl_by_cut(
-        df[["project_name", "non_null_pick_lst"]],
-        "project_name",
-        ["non_null_pick_lst"],
-        min_grp_cnt=None,
-        prct=False,
-    ).sort_values("non_null_pick_lst", ascending=False)
-
-    non_null_by_projet = non_null_by_projet[
-        non_null_by_projet["non_null_pick_lst"] > min_prop
-    ]
-    non_null_by_projet = non_null_by_projet[non_null_by_projet["N"] > min_N]
-
-    projs_to_include = non_null_by_projet.index
-
-    df = df[df["project_name"].isin(projs_to_include)].copy()
-
-    print(
-        f"Dropping {start_rows - len(df)} rows from { len(start_projs) - len(projs_to_include)} projects that have a non-null response rate of less than {min_prop} OR a minimum observation count less than {min_N}."
+    grp = (
+        df[["project_name", "non_null_pick_lst"]]
+        .groupby("project_name")
+        .agg(N=("non_null_pick_lst", "size"), non_null_cnt=("non_null_pick_lst", "sum"))
+        .sort_values("non_null_cnt", ascending=False)
     )
 
-    str_results["N_obs"] = int(round(len(df) / 10**3, 0))
-    str_results["N_rcp"] = int(round(df.recipient_id.nunique() / 10**3, 0))
-    str_results["N_proj"] = df.project_name.nunique()
-    str_results["N_countries"] = df.country.nunique()
+    grp["prop"] = grp["non_null_cnt"].div(grp["N"])
+
+    grp = grp[grp["prop"] > min_prop]
+    grp = grp[grp["N"] > min_N]
+    included_projs = grp.index
+
+    df = df[df["project_name"].isin(included_projs)].copy()
 
     print(
-        f"The remaining dataset is {len(df)} rows with {len(projs_to_include)} projects."
+        f"Dropping {start_rows - len(df)} rows from {len(start_projs) - len(included_projs)} projects that have a non-null response rate of less than {min_prop} OR a minimum observation count less than {min_N}."
+    )
+
+    print(
+        f"The remaining dataset is {len(df)} rows with {len(included_projs)} projects."
     )
     return df.drop("non_null_pick_lst", axis=1)
 
 
-def compositional_analysis(df):
+def categories_by_response_rate(ohe: pd.DataFrame, name: str) -> pd.DataFrame:
+    """Count and order categories by number of response rate"""
+
+    summary_counts = pd.DataFrame(
+        {
+            "N": ohe.sum(axis=0).sort_values(ascending=False).round(0),
+            "Prct": (ohe.sum(axis=0).sort_values(ascending=False) / len(ohe)),
+        }
+    )
+
+    if summary_counts.index.nlevels == 2:
+        summary_counts.index = summary_counts.index.rename(
+            ["Agg. category", "Category"]
+        )
+    else:
+        summary_counts.index = summary_counts.index.rename("Agg. category")
+
+    RESULTS["xls_cnts"].append((name, summary_counts))
+    return summary_counts
+
+
+def dataset_desc_stats(df):
+    """Overall descriptive stats on filtered dateset"""
+    str_res = RESULTS["str_results"]
+    str_res["cur_date"] = datetime.datetime.now().strftime("%Y-%m-%d")
+    str_res["N_obs"] = int(round(len(df) / 10**3, 0))
+    str_res["N_rcp"] = int(
+        round(df.index.get_level_values("recipient_id").nunique() / 10**3, 0)
+    )
+    str_res["N_proj"] = df.project_name.nunique()
+    str_res["N_countries"] = df.country.nunique()
+    str_res["N_cats_with_resp"] = len(df["ohe"].columns)
+    str_res["N_agg_cats"] = len(df["agg_ohe"].columns)
+
+
+def number_of_cats_desc_stats(df):
+    """descriptive stats about number of categories selected"""
+    str_res = RESULTS["str_results"]
+    diagnostics = RESULTS["diagnostics"]
+    n_cats = df[["recipient_gender", "age_group", "cat_cnt"]]
+    n_cats.columns = [c[0] for c in n_cats.columns]
+    by_gender = n_cats.groupby(["recipient_gender"])["cat_cnt"].describe()
+    by_age = n_cats.groupby(["age_group"])["cat_cnt"].describe()
+    str_res["mean_number_of_cats"] = n_cats["cat_cnt"].mean().round(2)
+    str_res["mean_number_of_cats_female"] = by_gender.loc["Female"]["mean"].round(2)
+    str_res["mean_number_of_cats_male"] = by_gender.loc["Male"]["mean"].round(2)
+    str_res["mean_number_of_cats_gender_diff"] = abs(
+        by_gender.loc["Female"]["mean"] - by_gender.loc["Male"]["mean"]
+    ).round(2)
+    age_and_gen = (
+        n_cats[n_cats["recipient_gender"].isin(["Male", "Female"])]
+        .groupby(["age_group", "recipient_gender"])
+        .describe()
+    )
+    diagnostics.append(("n_s_cats_by_age_gen", age_and_gen))
+    expense_cats_plot(n_cats)
+    male_cnts = n_cats[n_cats.recipient_gender == "Male"]["cat_cnt"]
+    female_cnts = n_cats[n_cats.recipient_gender == "Female"]["cat_cnt"]
+    t_statistic, p_value = stats.ttest_ind(male_cnts, female_cnts)
+    str_res["p_val_diff_in_cnt_of_resp_by_gender"] = round(p_value, 3)
+    str_res["t_stat_diff_in_cnt_of_resp_by_gender"] = round(t_statistic, 3)
+
+
+def cut_by_proj(df, sum_cols):
+    # Calculate by project
+    by_proj = prop_tbl_by_cut(
+        df,
+        "project_name",
+        sum_cols,
+        grp_disp_name="Project",
+        min_grp_cnt=None,
+        sort_output=False,
+    ).reset_index()
+
+    # Hacky way to add country into index
+    proj_to_country = (
+        df[["project_name", "country"]]
+        .droplevel(-1)
+        .droplevel(-1)
+        .drop_duplicates()
+        .set_index("project_name")
+        .to_dict(orient="dict")[("country", "")]
+    )
+    proj_to_country["All other"] = "All other"
+
+    by_proj["Country"] = by_proj["Project"].map(proj_to_country)
+
+    country_to_blank = {country: "" for country in df["country"].unique()}
+    by_proj["Project"] = (
+        by_proj["Project"].replace(country_to_blank, regex=True).str.strip()
+    )
+    return by_proj.set_index(["Country", "Project"])
+
+
+def analyze_category_props_by_group(df):
+    """
+    Analyze the proportion of respondents in diff spending categories at
+    the detailed and aggregated level by a number of different cuts.
+    """
+
+    # Setup res objs and
+    str_res = RESULTS["str_results"]
+    xls_res = RESULTS["xls_results"]
+    diagnostics = RESULTS["diagnostics"]
+
+    summary_counts = categories_by_response_rate(df["ohe"], "cats_by_respondent")
+    summary_counts["IW Prct"] = categories_by_response_rate(
+        df["norm_ohe"], "norm_ats_by_respondent"
+    )["Prct"]
+    num_w_over_1_prct = summary_counts[summary_counts.Prct > 0.01]
+    num_w_under_1_prct = summary_counts[summary_counts.Prct <= 0.01]
+
+    str_res[
+        "top_response_categories_by_response_mdtbl"
+    ] = num_w_over_1_prct.reset_index(names=["Agg. category", "Category"]).to_markdown(
+        index=False, floatfmt=(None, None, ",.0f", ".1%", ".1%")
+    )
+    str_res["sel_by_over_1_prct"] = len(num_w_over_1_prct)
+    str_res["total_sel_by_under_1_prct"] = num_w_under_1_prct["N"].sum()
+
+    categories_by_response_rate(df["ohe"].loc[1, :], "cats_by_recipient")
+
+    # Vice count
+    str_res["vice_prct"] = df["ohe"][
+        [("Other", c) for c in VICE_CATEGORIES]
+    ].sum().sum() / len(df)
+
+    # For rest of analysis, sum up to higher level categories
+    ## Category props
+
+    df.sort_index(axis=1, inplace=True)
+    df = df.drop("ohe", axis=1, level=0)
+    df.columns = df.columns.droplevel(-1)
+
+    overall = categories_by_response_rate(df["agg_ohe"], "agg_cats_by_rcp")
+    overall["IW Prct"] = categories_by_response_rate(
+        df["norm_agg_ohe"], "norm_agg_cats_by_rsp"
+    )["Prct"]
+    overall = overall.sort_values("IW Prct", ascending=False)
+    xls_res.append(("overall", overall))
+    xls_res.append(("detailed_cats", summary_counts))
+
+    top_5 = list(overall.index[:5])
+    top_5_str = [n.lower() for n in top_5]
+
+    str_res["prop_w_resp_in_top_5"] = df["agg_ohe"][top_5].max(axis=1).sum() / len(df)
+    str_res["prop_in_top_5_cats"] = overall.head(5)["IW Prct"].sum()
+    str_res["top_5_str"] = f"{', '.join(top_5_str[:4])}, and {top_5_str[4]}"
+    str_res["top_aggregated_response_categories_mdtbl"] = overall.to_markdown(
+        floatfmt=(None, ",.0f", ".1%", ".1%")
+    )
+    str_res["most_popular_category"] = overall.head(1).index.values[0]
+    str_res["most_popular_category_prct"] = overall.head(1)["Prct"].values[0]
+    str_res["most_popular_category_iw_prct"] = overall.head(1)["IW Prct"].values[0]
+
+    # # Calculate response counts by recipient
+    by_rcp = categories_by_response_rate(df["agg_ohe"].loc[1], "agg_cats_by_rcp")
+    by_rcp["IW Prct"] = categories_by_response_rate(
+        df["norm_agg_ohe"].loc[1], "norm_agg_cats_by_rcp"
+    )["Prct"]
+    str_res["top_aggregated_response_categories_rcp_mdtbl"] = by_rcp.sort_values(
+        "IW Prct", ascending=False
+    ).to_markdown(floatfmt=(None, ",.0f", ".1%", ".1%"))
+
+    # Calculate response counts by recipient who only picked one category
+    categories_by_response_rate(
+        df[df["agg_cat_cnt"] == 2]["agg_ohe"].loc[1], "agg_cats_single"
+    )
+
+    # Calculate by project
+    by_proj = cut_by_proj(df, "agg_ohe")
+    xls_res.append(("by_proj", by_proj))
+    xls_res.append(("by_proj_iw", cut_by_proj(df, "norm_agg_ohe")))
+
+    # By country
+    by_country = prop_tbl_by_cut(df, "country", "agg_ohe", grp_disp_name="Country")
+    xls_res.append(("by_country", by_country))
+    xls_res.append(
+        (
+            "by_country_iw",
+            prop_tbl_by_cut(df, "country", "norm_agg_ohe", grp_disp_name="Country"),
+        )
+    )
+
+    # By gender
+    by_gender = prop_tbl_by_cut(
+        df, "recipient_gender", "agg_ohe", grp_disp_name="Gender"
+    )
+    xls_res.append(("by_gender", by_gender))
+    xls_res.append(
+        (
+            "by_gender_iw",
+            prop_tbl_by_cut(
+                df, "recipient_gender", "norm_agg_ohe", grp_disp_name="Gender"
+            ),
+        )
+    )
+
+    # By age bin
+    by_age = prop_tbl_by_cut(
+        df,
+        "age_group",
+        "agg_ohe",
+        grp_disp_name="Age",
+        min_grp_cnt=None,
+        sort_output=False,
+    )
+    xls_res.append(("by_age", by_age))
+    xls_res.append(
+        (
+            "by_age_iw",
+            prop_tbl_by_cut(
+                df,
+                "age_group",
+                "norm_agg_ohe",
+                grp_disp_name="Age",
+                min_grp_cnt=None,
+                sort_output=False,
+            ),
+        )
+    )
+
+
+def demo_factor_analysis(df):
     """Do basic compositional analysis on Age / Gender"""
+
+    # Setup res objs and
+    str_res = RESULTS["str_results"]
+    xls_res = RESULTS["xls_results"]
+    diagnostics = RESULTS["diagnostics"]
 
     def extract_model_info(model, feature_names):
         coeffs = model.params[feature_names]
-
         std_err = model.bse[feature_names]
         p_values = model.pvalues[feature_names]
         return pd.DataFrame(
@@ -375,9 +629,10 @@ def compositional_analysis(df):
     # Drop non-binary genders
     rcp_cnts = rcp_cnts[rcp_cnts.recipient_gender.isin(["Female", "Male"])]
 
-    # Drop missing aggs
+    # Drop obs with missing ages
     rcp_cnts = rcp_cnts[~rcp_cnts.recipient_age_at_contact.isnull()]
 
+    # Standardize age coeff
     rcp_cnts["age"] = (
         rcp_cnts["recipient_age_at_contact"]
         - rcp_cnts["recipient_age_at_contact"].mean()
@@ -392,8 +647,10 @@ def compositional_analysis(df):
 
     res = {}
     fets = ["C(recipient_gender, Treatment('Male'))[T.Female]", "age"]
+
+    # rcp_cnts[outcomes] = rcp_cnts[outcomes].div( rcp_cnts['agg_cat_cnt'].values, axis=0)
     for outcome in outcomes:
-        formula = f"{outcome} ~ agg_cat_cnt + age + C(recipient_gender, Treatment('Male'))  +  C(project_name)"
+        formula = f"{outcome} ~  age + C(recipient_gender, Treatment('Male')) +  C(project_name)"
 
         model = smf.ols(formula=formula, data=rcp_cnts).fit(
             cov_type="cluster", cov_kwds={"groups": rcp_cnts["project_name"]}
@@ -413,181 +670,14 @@ def compositional_analysis(df):
         }
     )
     res["sv"] = abs(res["Coefficient"])
-    print(res.sort_values("sv", ascending=False).drop("sv", axis=1))
-
-    RESULTS["str_results"]["lpm_by_predictors_mdtbl"] = res.to_markdown(index=False)
-
-
-def categories_by_response_rate(ohe: pd.DataFrame, name: str) -> pd.DataFrame:
-    """Count and order categories by number of response rate"""
-
-    summary_counts = pd.DataFrame(
-        {
-            "N": ohe.sum(axis=0).sort_values(ascending=False),
-            "Prct": (ohe.sum(axis=0).sort_values(ascending=False) / len(ohe)) * 100,
-        }
+    str_res["lpm_by_predictors_sorted_mdtbl"] = (
+        res[res["P-value"] < 0.05]
+        .sort_values("sv", ascending=False)
+        .drop("sv", axis=1)
+        .head(5)
+        .to_markdown(index=False, floatfmt=(None, None, ".3f", ".3f", ".3f"))
     )
-
-    if summary_counts.index.nlevels == 2:
-        summary_counts.index = summary_counts.index.rename(
-            ["Agg. category", "Category"]
-        )
-    else:
-        summary_counts.index = summary_counts.index.rename("Agg. category")
-
-    RESULTS["xls_cnts"].append((name, summary_counts))
-    return summary_counts
-
-
-def run_analysis(
-    df,
-    name,
-):
-    """
-    Calculates one hot encoded values, then calculates the
-    proportion of those one hot encoded values over a number of cut
-    categories. It finds a dict containing a bloat, a dictionary of
-    markdown tables, and a dictionary of pandas data frames to be
-    later converted into excel files.
-    """
-    str_results = RESULTS["str_results"]
-    str_results["cur_date"] = datetime.datetime.now().strftime("%Y-%m-%d")
-    xls_results = RESULTS["xls_results"]
-    diagnostics = RESULTS["diagnostics"]
-
-    # descriptive stats about number of categories selected
-
-    n_spend_df = df[["recipient_gender", "age_group", "cat_cnt"]]
-    n_spend_df.columns = [c[0] for c in n_spend_df.columns]
-
-    by_gender = n_spend_df.groupby(["recipient_gender"])["cat_cnt"].describe()
-    by_age = n_spend_df.groupby(["age_group"])["cat_cnt"].describe()
-
-    str_results["mean_number_of_categories"] = n_spend_df["cat_cnt"].mean().round(2)
-    str_results["mean_number_of_categories_female"] = by_gender.loc["Female"][
-        "mean"
-    ].round(2)
-    str_results["mean_number_of_categories_male"] = by_gender.loc["Male"]["mean"].round(
-        2
-    )
-    str_results["mean_number_of_categories_gender_diff"] = abs(
-        by_gender.loc["Female"]["mean"] - by_gender.loc["Male"]["mean"]
-    ).round(2)
-
-    diagnostics.append(
-        (
-            "n_s_cats_by_age_gen",
-            n_spend_df[n_spend_df["recipient_gender"].isin(["Male", "Female"])]
-            .groupby(["age_group", "recipient_gender"])
-            .describe(),
-        )
-    )
-
-    expense_cats_plot(n_spend_df)
-
-    male_cnts = n_spend_df[n_spend_df.recipient_gender == "Male"]["cat_cnt"]
-    female_cnts = n_spend_df[n_spend_df.recipient_gender == "Female"]["cat_cnt"]
-    t_statistic, p_value = stats.ttest_ind(male_cnts, female_cnts)
-    str_results["p_val_diff_in_cnt_of_resp_by_gender"] = round(p_value, 3)
-    str_results["t_stat_diff_in_cnt_of_resp_by_gender"] = round(t_statistic, 3)
-
-    summary_counts = categories_by_response_rate(df["ohe"], "cats_by_respondent")
-
-    num_w_over_1_prct = summary_counts[summary_counts.Prct > 1]
-    num_w_under_1_prct = summary_counts[summary_counts.Prct <= 1]
-
-    str_results["top_response_categories_by_response_mdtbl"] = (
-        num_w_over_1_prct.reset_index(names=["Agg. category", "Category"])
-        .round(1)
-        .to_markdown(index=False)
-    )
-    str_results[
-        "top_response_categories_note_by_response"
-    ] = f"Among the original categories, there were {len(summary_counts)} that received responses, with only {len(num_w_over_1_prct)} response types that were selected by over 1% of respondents. All other responses only contributed for {num_w_under_1_prct['N'].sum()} responses."
-
-    categories_by_response_rate(df["ohe"].loc[1, :], "cats_by_recipient")
-
-    # Vice count
-    vice_prct = (
-        df["ohe"][[("Other", c) for c in VICE_CATEGORIES]].sum().sum() / len(df)
-    ) * 100
-    str_results["vice_prct"] = round(vice_prct, 2)
-
-    # For rest of analysis, sum up to higher level categories
-    ## Category props
-
-    df.sort_index(axis=1, inplace=True)
-    df = df.drop("ohe", axis=1, level=0)
-    df.columns = df.columns.droplevel(-1)
-
-    overall = categories_by_response_rate(df["agg_ohe"], "agg_cats_by_rsp")
-    top_5 = list(overall.index[:5])
-
-    prop_w_resp_in_top_5 = df["agg_ohe"][top_5].max(axis=1).sum() / len(df)
-    top_5_str = [n.lower() for n in top_5]
-
-    str_results["prop_w_resp_in_top_5"] = f"{prop_w_resp_in_top_5*100:.1f}"
-    str_results["top_5_str"] = f"{', '.join(top_5_str[:4])}, and {top_5_str[4]}"
-    note = f"{prop_w_resp_in_top_5*100:.1f}% of surveyed recipients indicating that they spent at least part of their transfer on one or more of {', '.join(top_5_str[:4])}, and {top_5_str[4]} expenses."
-    str_results["top_aggregated_response_categories_mdtbl"] = overall.round(
-        1
-    ).to_markdown()
-    str_results["top_aggregated_response_categories_note"] = note
-    str_results["most_popular_category"] = overall.head(1).index.values[0]
-    str_results["most_popular_category_prct"] = round(
-        overall.head(1)["Prct"].values[0], 1
-    )
-
-    # Calculate response counts by recipient
-    categories_by_response_rate(df["agg_ohe"].loc[1], "agg_cats_by_rcp")
-
-    # Calculate by project
-    by_proj = prop_tbl_by_cut(
-        df, "project_name", "agg_ohe", grp_disp_name="Project", min_grp_cnt=None
-    ).reset_index()
-
-    # Hacky way to add country into index
-    proj_to_country = (
-        df[["project_name", "country"]]
-        .drop_duplicates()
-        .set_index("project_name")
-        .to_dict(orient="dict")
-    )
-    proj_to_country["All other"] = "All other"
-
-    by_proj["Country"] = by_proj["Project"].map(proj_to_country)
-
-    country_to_blank = {country: "" for country in df["country"].unique()}
-    by_proj["Project"] = (
-        by_proj["Project"].replace(country_to_blank, regex=True).str.strip()
-    )
-    by_proj = by_proj.set_index(["Country", "Project"]).sort_index()
-    xls_results.append(("by_proj", by_proj))
-    str_results["by_project_mdtbl"] = by_proj.round(1)
-
-    # By country
-    by_country = prop_tbl_by_cut(df, "country", "agg_ohe", grp_disp_name="Country")
-    str_results["by_country_mdtbl"] = by_country.round(1)
-    xls_results.append(("by_country", by_country))
-
-    # By gender
-    by_gender = prop_tbl_by_cut(
-        df, "recipient_gender", "agg_ohe", grp_disp_name="Gender"
-    )
-    str_results["by_recipient_gender_mdtbl"] = by_gender.round(1)
-    xls_results.append(("by_gender", by_gender))
-
-    # By age bin
-    by_age = prop_tbl_by_cut(
-        df,
-        "age_group",
-        "agg_ohe",
-        grp_disp_name="Age",
-        min_grp_cnt=None,
-        sort_output=False,
-    )
-    str_results["by_recipient_age_mdtbl"] = by_age.round(1).to_markdown()
-    xls_results.append(("by_age", by_age))
+    str_res["lpm_by_predictors_mdtbl"] = res.drop("sv", axis=1).to_markdown(index=False)
 
 
 def dl_and_analyze_data():
@@ -595,8 +685,10 @@ def dl_and_analyze_data():
     Download and analyze data -- runs analysis pipeline.
     """
 
-    check_cnts()
+    # Count table rows
+    check_prop_xfers_w_flup_survey()
 
+    # Setup mapping dicts for switching between detailed and summary categories
     aggregate_to_detailed_spend_category = further_group_agg_spend_catigories(
         AGGREGATE_TO_DETAILED_SPEND_CATEGORY, OTHER_AGGREGATE_SPEND_CATIGORIES
     )
@@ -604,21 +696,27 @@ def dl_and_analyze_data():
         aggregate_to_detailed_spend_category, PICK_LST_TO_QUANTS_COLS
     )
 
+    # DL and featureize the dataset
     cache_path = f"data_cache/data.pkl.gz"
     if os.path.exists(cache_path):
         df = pd.read_pickle(cache_path)
         proj_report = pd.read_pickle("data_cache/proj_report.pkl")
+
     else:
         df = get_base_data()
-        proj_report = cnts_by_proj(df, min_prop=0.8, min_N=1000)
+        proj_report = cnts_by_proj(df, min_prop=MIN_PROJ_PROP, min_N=MIN_PROJ_N)
         proj_report.to_pickle("data_cache/proj_report.pkl")
-        df = filter_projects_w_high_null_rates(df, min_prop=0.8, min_N=1000)
-        df = df.set_index(["rcpnt_fu_num", "recipient_id", "transfer_id", "fu_id"])
+        df = filter_projects_w_high_null_rates(
+            df, min_prop=MIN_PROJ_PROP, min_N=MIN_PROJ_N
+        )
         df = add_features(df, aggregate_to_detailed_spend_category)
         df.to_pickle(cache_path)
 
-    run_analysis(df, "full")
-    compositional_analysis(df)
+    # Run analysis
+    dataset_desc_stats(df)
+    number_of_cats_desc_stats(df)
+    analyze_category_props_by_group(df)
+    demo_factor_analysis(df)
     RESULTS["diagnostics"].append(("by_project_cnts", proj_report))
 
     return RESULTS

@@ -2,7 +2,7 @@ import sqlparse
 
 from mappings import FLUP_TO_RES
 
-START_DT = "2020-01-01"
+START_DT = "2019-10-01"
 END_DT = "2023-10-01"
 
 # Columns to include from the transfers metrics table.

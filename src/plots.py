@@ -49,5 +49,6 @@ def expense_cats_plot(n_spend_df: pd.DataFrame) -> None:
     plt.xlabel("Recipient age at time of contact")
     plt.ylabel("Mean number of expense categories selected")
     plt.legend()
+    plt.grid()
     plt.ylim(bottom=0)
-    plt.savefig("output/cat_selected.png")
+    plt.savefig("output/cat_selected.png", dpi=250)

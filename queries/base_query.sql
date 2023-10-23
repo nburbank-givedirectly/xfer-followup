@@ -107,5 +107,5 @@ LEFT JOIN research res ON fu.Recipient__c = res.Recipient__c
 AND abs(UNIX_TIMESTAMP(fu.CreatedDate) - UNIX_TIMESTAMP(res.CreatedDate)) < 60
 WHERE t.transfer_status = 'Complete'
   AND t.recipient_inactive_stage = 0
-  AND t.transfer_created_date >= '2020-01-01'
+  AND t.transfer_created_date >= '2019-10-01'
   AND t.transfer_created_date < '2023-10-01'

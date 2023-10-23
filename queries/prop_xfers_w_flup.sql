@@ -22,5 +22,5 @@ AND fu.IsDeleted = FALSE
 AND fu.Is_Successful__c = TRUE
 WHERE t.transfer_status = 'Complete'
   AND t.recipient_inactive_stage = 0
-  AND t.transfer_created_date >= '2020-01-01'
+  AND t.transfer_created_date >= '2019-10-01'
   AND t.transfer_created_date < '2023-10-01'
