@@ -534,6 +534,7 @@ def analyze_category_props_by_group(df):
         floatfmt=(None, ",.0f", ".1%", ".1%")
     )
     str_res["most_popular_category"] = overall.head(1).index.values[0]
+    str_res["most_popular_category_lc"] = str_res["most_popular_category"].lower()
     str_res["most_popular_category_prct"] = overall.head(1)["Prct"].values[0]
     str_res["most_popular_category_iw_prct"] = overall.head(1)["IW Prct"].values[0]
 
