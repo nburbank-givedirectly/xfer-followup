@@ -90,6 +90,7 @@ If I were to spend more time on this analysis, these are the areas I would focus
 - Presuming that the examination of the proportions in the “How much spending” columns does not reveal any surprises, we could then scale the inverse-weighted percentage estimates by the dollar amount of the associated transfers. This would allow us to estimate the number of  transferred dollars spent by recipients in specific categories in aggregate. In theory, we could then make statements like “X$ in Y time period were spent by recipients on food, or Z% of transfer dollars in 2022 were spent on housing.” (But again,  this is dependent on the Spending Categories” pick-list question proving to be a reasonable proxy for spending proportions.).
 - Converting the above analysis into a Tableau dashboard that’s updated automatically and able to be filtered on more subcategories.
 - More analysis and robustness checks are needed to assess the scale of the demographic associations between recipient characteristics and the stated expenditure patterns described above. What I have in this doc is a quick and dirty analysis only intended to identify potential patterns that might be worth investigating further. We would need to do more work to further verify these associations before relying on them for any public commentary.
+- Could do unsupervised expense category clustering (via K-means clustering or Hierarchical clustering) to look for common groupings of expense categories and identify different recipient spending pattern profiles.
 
 \newpage
 ## Appendix

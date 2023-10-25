@@ -212,6 +212,16 @@ def add_features(df, aggregate_to_detailed_spend_category):
         df["recipient_age_at_contact"], bins=bins, labels=age_labels, right=False
     )
 
+    df["year"] = df["completed_date"].dt.year
+
+    proj_nm_to_type = {"Mozambique USAID Agricultural Lump-Sum": "Large Transfer"}
+    project_types = ["Large Transfer", "Emergency Relief", "Basic Income", "Cash+"]
+    for p in df.project_name.unique():
+        for pt in project_types:
+            if pt in p:
+                proj_nm_to_type[p] = pt
+    df["project_type"] = df.project_name.map(proj_nm_to_type)
+
     ohe = split_and_ohe_str_lst(
         df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
     )
@@ -481,7 +491,6 @@ def analyze_category_props_by_group(df):
     Analyze the proportion of respondents in diff spending categories at
     the detailed and aggregated level by a number of different cuts.
     """
-
     # Setup res objs and
     str_res = RESULTS["str_results"]
     xls_res = RESULTS["xls_results"]
@@ -564,6 +573,30 @@ def analyze_category_props_by_group(df):
         (
             "by_country_iw",
             prop_tbl_by_cut(df, "country", "norm_agg_ohe", grp_disp_name="Country"),
+        )
+    )
+
+    # By project type
+    by_proj_type = prop_tbl_by_cut(
+        df, "project_type", "agg_ohe", grp_disp_name="Project Type"
+    )
+    xls_res.append(("by_proj_type", by_proj_type))
+    xls_res.append(
+        (
+            "by_proj_type_iw",
+            prop_tbl_by_cut(
+                df, "project_type", "norm_agg_ohe", grp_disp_name="Project Type"
+            ),
+        )
+    )
+
+    # By year
+    by_year = prop_tbl_by_cut(df, "year", "agg_ohe", grp_disp_name="Xfer year")
+    xls_res.append(("by_year", by_year))
+    xls_res.append(
+        (
+            "by_year_iw",
+            prop_tbl_by_cut(df, "year", "norm_agg_ohe", grp_disp_name="Xfer year"),
         )
     )
 
