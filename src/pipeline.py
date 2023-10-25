@@ -16,13 +16,14 @@ def escape_brackets(s):
 
     lines = s.split("\n")
     for line in lines:
+
         if line.startswith(start_delimiter) and not inside_delimiters:
             inside_delimiters = True
             escaped_lines.append(line)
         elif line.startswith(end_delimiter):
             inside_delimiters = False
             escaped_lines.append(line)
-        elif inside_delimiters:
+        elif inside_delimiters or (line.startswith('#') and line.endswith('}')):
             escaped_line = line.replace("{", "{{").replace("}", "}}")
             escaped_lines.append(escaped_line)
         else:
@@ -101,5 +102,6 @@ if __name__ == "__main__":
             "--reference-doc=writeup/custom-reference.docx",
             "--extract-media",
             "./figures",
+            "--filter", "pandoc-docx-pagebreakpy"
         ]
     )

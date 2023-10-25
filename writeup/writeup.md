@@ -35,7 +35,7 @@ There are three primary challenges when working with data derived from the Spend
 
 The second challenge is the large number of defined spending categories within these questions, some of which overlap. Of the 64 defined categories, only {N_cats_with_resp} were chosen by recipients in the last four years, with just {sel_by_over_1_prct} selected by over 1% of respondents. To identify broader trends, I consolidated these 64 categories into ten main groupings, which can be found in the [detailed_categories](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=210478292) tab of the project results spreadsheet.[^5] This grouping is necessarily somewhat arbitrary.
 
-The third challenge is that the number of expense categories recipients typically choose varies significantly by age and gender. Over the past four years respondents selected {mean_number_of_cats} expense categories on average. However, there is significant variation in this count across demographic subgroups. Female recipients selected an average of {mean_number_of_cats_female} categories, or {mean_number_of_cats_gender_diff} more categories than the average male recipient who selected {mean_number_of_cats_male} categories. Moreover, older recipients, regardless of gender, selected more categories compared to younger recipients on average. See the appendix for more on these differences.
+The third challenge is that the number of expense categories recipients typically choose varies significantly by age and gender. Over the past four years respondents selected {mean_number_of_cats} expense categories on average. However, there is significant variation in this count across demographic subgroups. Female recipients selected an average of {mean_number_of_cats_female} categories, or {mean_number_of_cats_gender_diff} more categories than the average male recipient who selected {mean_number_of_cats_male} categories. Moreover, older recipients, regardless of gender, selected more categories compared to younger recipients on average. See the [appendix](#more-on-the-relationship-between-demographic-factors-and-the-number-of-categories-selected) for more on these differences.
 
 These two trends make it challenging to distinguish differences in spending patterns among demographic subgroups from differences in the inclination to provide a more or less detailed breakdown of primary expense categories. To make responses across recipients comparable I applied inverse weighting to the counts of response categories. I divide each response indicator by the total number of expense categories each recipient selected. For respondents who choose multiple categories, this normalization encodes the assumption that their transfer spending was split evenly among the categories they selected.[^6]
 
@@ -47,7 +47,7 @@ The table below displays the 10 aggregated expense categories with three columns
 
 Among these higher level categories, food is the most popular reported expense category, with {prop_w_resp_in_top_5:.1%} of surveyed recipients indicating that they spent at least part of their transfer on one or more of {top_5_str} expenses. Food accounts for {most_popular_category_iw_prct:.1%} of transfer expenditures on an inverse-weighted basis, with the top five categories accounting for {prop_in_top_5_cats:.1%} overall. 
 
-One potential concern arises from the fact that some programs have more transfers than others. When we normalize the proportions by the number of responses rather than the number of unique recipients, we might overweight the results towards spending patterns from those programs' recipients. To address this, I've included a version of this table in the appendix filtered to only include one response per recipient. However, the rank ordering of categories in that version is almost identical to the one above.
+One potential concern arises from the fact that some programs have more transfers than others. When we normalize the proportions by the number of responses rather than the number of unique recipients, we might overweight the results towards spending patterns from those programs' recipients. To address this, I've included a version of this table in [the appendix](#recipient-weighted-aggregated-expense-categories) filtered to only include one response per recipient. However, the rank ordering of categories in that version is almost identical to the one above.
 
 ###  Top response-weighted expense categories
 
@@ -68,7 +68,7 @@ Using the higher-level expense categories, I calculated both the raw percentage 
 
 ## Preliminary analysis on associations between demographic characteristics and spending outcomes
 
-We'd like to know whether there are associations between recipient demographic features and selected expense categories while adjusting for compositional differences across projects. Unfortunately, the number of response categories selected by recipients also varies by demographic factors. To address this, I modeled the inverse-weighted response counts instead of the raw counts, normalizing the differences in the number of category selections. Specifically, I fit a series of linear regression models, one for each expense outcome while controlling for project-specific effects. Each of these models examines the link between the probability of selecting a given expense category and the demographic characteristics of an "average" GD recipient.[^8] We can then compare coefficients across models to assess the relative strength of association between demographic factors and the selection of particular expense categories. (Full regression specification is in the appendix.)
+We'd like to know whether there are associations between recipient demographic features and selected expense categories while adjusting for compositional differences across projects. Unfortunately, the number of response categories selected by recipients also varies by demographic factors. To address this, I modeled the inverse-weighted response counts instead of the raw counts, normalizing the differences in the number of category selections. Specifically, I fit a series of linear regression models, one for each expense outcome while controlling for project-specific effects. Each of these models examines the link between the probability of selecting a given expense category and the demographic characteristics of an "average" GD recipient.[^8] We can then compare coefficients across models to assess the relative strength of association between demographic factors and the selection of particular expense categories.[^9]
 
 The following table contains the top five regression coefficients, standard errors, and p-values for gender and recipient age predictors fit within these 10 linear regression models, one for each higher level expense category outcome.
 
@@ -86,23 +86,15 @@ While this analysis is only preliminary, there appears to be a mild positive ass
 
 If I were to spend more time on this analysis, these are the areas I would focus on next:  
 
-- Examining if the proportions in the "How much spending" columns align with the inverse weighted percentages derived from the "Spending Categories" pick-list question. Though the sample is smaller, if the proportions closely resemble the inverse weighted percentages, it would provide further evidence that recipients (roughly) evenly distribute their expenses among the categories they select. This would further validate that the inverse weighted percentages might be a reasonable proxy for inferring the final allocation of transfer dollars in aggregate.
-
-- If we're willing to accept the inverse weighting proportion assumption, there's nothing stopping us from also weighting by the dollar amount of the associated transfer. This would allow us to estimate the proportion of transferred dollars spent in different categories.
-
-- Converting the above analysis into a Tableau dashboard that's updated automatically and able to be filtered on more subcategories.
-
+- Examining if the proportions in the “How much spending” columns align with the inverse weighted percentages derived from the “Spending Categories” pick-list question. Though the sample is smaller, if the proportions closely resemble the inverse weighted percentages, it would provide further evidence that recipients (roughly) evenly distribute their expenses among the categories they select. This would further validate that the inverse weighted percentages are a reasonable proxy for inferring the final allocation of transfer dollars in aggregate. This would be the first step in enabling us to create dollarized spending allocation estimates (the next item).
+- Presuming that the examination of the proportions in the “How much spending” columns does not reveal any surprises, we could then scale the inverse-weighted percentage estimates by the dollar amount of the associated transfers. This would allow us to estimate the number of  transferred dollars spent by recipients in specific categories in aggregate. In theory, we could then make statements like “X$ in Y time period were spent by recipients on food, or Z% of transfer dollars in 2022 were spent on housing.” (But again,  this is dependent on the Spending Categories” pick-list question proving to be a reasonable proxy for spending proportions.).
+- Converting the above analysis into a Tableau dashboard that’s updated automatically and able to be filtered on more subcategories.
 - More analysis and robustness checks are needed to assess the scale of the demographic associations between recipient characteristics and the stated expenditure patterns described above. What I have in this doc is a quick and dirty analysis only intended to identify potential patterns that might be worth investigating further. We would need to do more work to further verify these associations before relying on them for any public commentary.
 
-  
-
----
-
-
-
+\newpage
 ## Appendix
 
-### More on the relationship between demographic factors and the number of categories selected
+### More on the relationship between demographic factors and the number of categories selected{#more-on-the-relationship-between-demographic-factors-and-the-number-of-categories-selected}
 
 The plot below presents the mean number of expense categories chosen by recipients, classified by both gender and age. Each data point represents the average number of categories selected by a specific gender within a specific age cohort. The error bars indicate two standard errors from the mean.
 
@@ -110,7 +102,7 @@ The plot below presents the mean number of expense categories chosen by recipien
 
 Both the age and gender differences in the number of categories selected are apparent: female recipients are more likely to select a larger number of expense categories than male recipients across all age groups. Additionally, older recipients are more likely to select a larger number of expense categories than younger recipients, regardless of gender.
 
-### Recipient-weighted aggregated expense categories
+### Recipient-weighted aggregated expense categories{#recipient-weighted-aggregated-expense-categories}
 
 One concern with the _Response-weighted aggregated expense categories_ table above is that we are over-weighting responses from recipients in programs that conduct a larger number of transfers. In the following table, I do the same analysis but only include the most recent successful follow-up survey for each recipient.
 
@@ -118,7 +110,7 @@ One concern with the _Response-weighted aggregated expense categories_ table abo
 
 With the exception of the Entrepreneurship and Household categories, the order is the same is in the version that is weighted by the number of respondents in the main text.
 
-### Regression specification for demographic factor association models 
+### Regression specification for demographic factor association models{#regression-specification-for-demographic-factor-association}
 
 In this analysis we essentially treat each outcome as a separate binary question and then assess the degree to which these two predictors are associated with that outcome after controlling for project-level fixed effects. This is one way of identifying association between gender and age above and beyond compositional differences resulting from different target populations in different projects.
 
@@ -136,7 +128,7 @@ Where:
 We're primarily interested in $\beta_1$ and $\beta_2$, the fit coefficients for gender and age.
 
 
-[^1]: The base Databricks query is [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/base_query.sql). Survey records in the research object were linked to transfers via follow up records with identical recipient ids and similar timestamps. In rare cases transfers can be linked to more than one successfully completed followup survey. In these cases, only the most recent survey record was used.
+[^1]: The base Databricks query is [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/base_query.sql). Survey records in the research object were linked to transfers via follow up records with identical recipient ids and similar timestamps. In rare cases transfers can be linked to more than one successfully completed followup survey. In these cases, only the most recent survey record was used.
 
 [^2]: The numerator for [this proportion](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/prop_xfers_w_flup.sql) is the count of successful follow-up records that can be matched to a transfer id and have a `recipient_inactive_stage` of 0. The denominator is the count of all complete transfers with a creation date between October 1st, 2019 and September 30th, 2023.
 
@@ -145,10 +137,12 @@ We're primarily interested in $\beta_1$ and $\beta_2$, the fit coefficients for 
 [^4]: In Field Salesforce, this is the `What_Did_The_Recipient_Spend_On` [question](https://givedirectly-field.my.salesforce.com/00N0b00000BuyeP?appLayout=setup&entityId=01I0b000001NFO0&noS1Redirect=true) within the Followup Object and the `Spending_Categories` [question](https://givedirectly-field.lightning.force.com/lightning/setup/ObjectManager/01I5a0000017dHL/FieldsAndRelationships/00N5a00000CsZNr/view) within the research object.
 
 [^5]: The full mapping, including categories that were never used in the past four years, is defined [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/22fac762e351be90505d6100118df603485aeec9/src/mappings.py#L337).
-
 [^6]: Note that when tallying selections within the aggregated categories, multiple selections by a recipient within a single aggregated category are counted as a single response. When normalizing percentages across aggregated categories, response counts are inversely weighted by the number of aggregated categories selected, not the number of detailed categories.
 [^7]: In other words,  `recipient_inactive_stage` is 0.
-[^8]: The word "average" is doing a lot of work in this sentence. The point is, we want some sense of what the strongest associations are across countries and projects within the populations that we tend to serve. But the results of this type of observational modeling are always going to be heavily affected by, and downstream of, recipient targeting criteria and methods. 
+
+[^8]: The word "average" is doing a lot of work in this sentence. The point is, we want some sense of what the strongest associations are across countries and projects within the populations that we tend to serve. But the results of this type of observational modeling are always going to be heavily affected by, and downstream of, recipient targeting criteria and methods.
+
+[^9]: Full regression specification is in [the appendix](#regression-specification-for-demographic-factor-association).
 
 
 
