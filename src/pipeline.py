@@ -3,7 +3,12 @@ import subprocess
 import pandas as pd
 import os
 from datetime import datetime
+from make_base_query import mk_base_query, mk_val_query
 from analysis import dl_and_analyze_data
+
+
+START_DT = "2019-10-01"
+END_DT = "2023-10-01"
 
 
 def escape_brackets(s):
@@ -23,7 +28,7 @@ def escape_brackets(s):
         elif line.startswith(end_delimiter):
             inside_delimiters = False
             escaped_lines.append(line)
-        elif inside_delimiters or (line.startswith('#') and line.endswith('}')):
+        elif inside_delimiters or (line.startswith("#") and line.endswith("}")):
             escaped_line = line.replace("{", "{{").replace("}", "}}")
             escaped_lines.append(escaped_line)
         else:
@@ -84,6 +89,9 @@ def gen_excel(xls_results, output_str, also_tsv=True):
 if __name__ == "__main__":
     if not os.path.exists("output"):
         os.makedirs("output")
+
+    mk_base_query(filename="queries/base_query")
+    mk_val_query(filename="queries/prop_xfers_w_flup")
     results = dl_and_analyze_data()
     name = f"{datetime.now().date().strftime('%Y%m%d')}_xfer_flup"
     gen_results_md(results["str_results"], name)
@@ -102,6 +110,7 @@ if __name__ == "__main__":
             "--reference-doc=writeup/custom-reference.docx",
             "--extract-media",
             "./figures",
-            "--filter", "pandoc-docx-pagebreakpy"
+            "--filter",
+            "pandoc-docx-pagebreakpy",
         ]
     )

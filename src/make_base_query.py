@@ -10,18 +10,18 @@ TRANSFER_COLS = [
     "transfer_id",
     "recipient_id",
     "country",
-    "continent",
-    "record_type_name",
+    # "continent",
+    # "record_type_name",
     "project_name",
-    "transfer_created_date",
-    "original_scheduled_date",
-    "most_recent_attempt_date",
+    # "transfer_created_date",
+    # "original_scheduled_date",
+    # "most_recent_attempt_date",
     "completed_date",
-    "transfer_status",
-    "discarded_duplicate",
-    "recipient_inactive_stage",
-    "transfer_inactive",
-    "transfer_completed",
+    # "transfer_status",
+    # "discarded_duplicate",
+    # "recipient_inactive_stage",
+    # "transfer_inactive",
+    # "transfer_completed",
     # "transfer_amount_total_full_local_estimate",
     # "transfer_amount_total_eligible_local",
     # "transfer_amount_total_discarded_local_estimate",
@@ -42,10 +42,10 @@ TRANSFER_COLS = [
     # "transfer_amount_commitment_eligible_usd_current_value",
     # "transfer_amount_commitment_complete_local",
     # "transfer_amount_commitment_outstanding_local",
-    "transfer_amount_commitment_complete_usd",
-    "transfer_amount_commitment_outstanding_usd",
-    "index_one_on_time",
-    "index_later_delay_flup",
+    # "transfer_amount_commitment_complete_usd",
+    # "transfer_amount_commitment_outstanding_usd",
+    # "index_one_on_time",
+    # "index_later_delay_flup",
     "recipient_age_at_contact",
     "recipient_gender",
 ]
@@ -147,7 +147,7 @@ def mk_val_query(filename: str) -> None:
         ON fu.Transfer__c = t.transfer_id
             AND fu.IsDeleted = FALSE
             AND fu.Is_Successful__c = TRUE
-    WHERE t.transfer_status = 'Complete'
+    WHERE  t.transfer_completed = 1
             AND t.recipient_inactive_stage = 0
             AND t.transfer_created_date >= '{START_DT}'
            AND t.transfer_created_date < '{END_DT}'

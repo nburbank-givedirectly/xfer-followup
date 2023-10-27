@@ -18,10 +18,12 @@ from mappings import (
 )
 from plots import expense_cats_plot
 
-# Min number of non-null responsese for project to be included
+
+# Min number of non-null responses for project to be included
 MIN_PROJ_N = 1000
 # Min proportion of follow-up surveys for which spending category question is non-null.
 MIN_PROJ_PROP = 0.8
+
 
 RESULTS = {
     "str_results": {},
@@ -185,17 +187,31 @@ def gen_multi_level_spend(df, category_aggregations_spend):
     return spend_df.fillna(0).sort_index(axis=1).T.groupby(level=0).sum().T
 
 
-def add_features(df, aggregate_to_detailed_spend_category):
+def add_features(df, aggregate_to_detailed_spend_category, survey_aggregation=None):
     """Add age group and abbreviated project name columns to dataframe"""
 
+    # Drop spending cols for now
+    df = df.drop(
+        [c for c in df.columns if ("spending" in c and c != "spending_categories")],
+        axis=1,
+    )
     # Set index
     df = df.set_index(["rcpnt_fu_num", "recipient_id", "transfer_id", "fu_id"])
 
+    # Project features
     df["proj_name"] = (
         df["project_name"].replace(PROJECT_NAME_ABBREVIATIONS, regex=True).str.strip()
     )
 
-    # Add age group feature
+    proj_nm_to_type = {"Mozambique USAID Agricultural Lump-Sum": "Large Transfer"}
+    project_types = ["Large Transfer", "Emergency Relief", "Basic Income", "Cash+"]
+    for p in df.project_name.unique():
+        for pt in project_types:
+            if pt in p:
+                proj_nm_to_type[p] = pt
+    df["project_type"] = df.project_name.map(proj_nm_to_type)
+
+    # Recipient features
     bins = [0, 19, 29, 39, 49, 59, 69, 79, 89, 150]
     age_labels = [
         "13-19",
@@ -212,19 +228,17 @@ def add_features(df, aggregate_to_detailed_spend_category):
         df["recipient_age_at_contact"], bins=bins, labels=age_labels, right=False
     )
 
+    # Transaction features
     df["year"] = df["completed_date"].dt.year
-
-    proj_nm_to_type = {"Mozambique USAID Agricultural Lump-Sum": "Large Transfer"}
-    project_types = ["Large Transfer", "Emergency Relief", "Basic Income", "Cash+"]
-    for p in df.project_name.unique():
-        for pt in project_types:
-            if pt in p:
-                proj_nm_to_type[p] = pt
-    df["project_type"] = df.project_name.map(proj_nm_to_type)
 
     ohe = split_and_ohe_str_lst(
         df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
     )
+
+    if survey_aggregation == "weighted_avg":
+        ohe = ohe.groupby("recipient_id").sum()
+        df = df.loc[1]
+
     agg_ohe = ohe.T.groupby(level=0).max().T
 
     ohe.columns = pd.MultiIndex.from_tuples([("ohe", c[0], c[1]) for c in ohe.columns])
@@ -417,9 +431,9 @@ def dataset_desc_stats(df):
     """Overall descriptive stats on filtered dateset"""
     str_res = RESULTS["str_results"]
     str_res["cur_date"] = datetime.datetime.now().strftime("%Y-%m-%d")
-    str_res["N_obs"] = int(round(len(df) / 10**3, 0))
+    str_res["N_obs"] = int(round(len(df) / 10 ** 3, 0))
     str_res["N_rcp"] = int(
-        round(df.index.get_level_values("recipient_id").nunique() / 10**3, 0)
+        round(df.index.get_level_values("recipient_id").nunique() / 10 ** 3, 0)
     )
     str_res["N_proj"] = df.project_name.nunique()
     str_res["N_countries"] = df.country.nunique()
@@ -453,6 +467,24 @@ def number_of_cats_desc_stats(df):
     t_statistic, p_value = stats.ttest_ind(male_cnts, female_cnts)
     str_res["p_val_diff_in_cnt_of_resp_by_gender"] = round(p_value, 3)
     str_res["t_stat_diff_in_cnt_of_resp_by_gender"] = round(t_statistic, 3)
+    n_cats = df[
+        ["project_name", "recipient_gender", "age_group", "cat_cnt", "agg_cat_cnt"]
+    ]
+    mf_only = n_cats[n_cats["recipient_gender"].isin(["Male", "Female"])]
+    by_proj = (
+        mf_only.groupby(["project_name", "recipient_gender"])["cat_cnt"]
+        .describe()[["count", "mean"]]
+        .unstack()
+    )
+    by_proj["diff"] = by_proj[("mean", "Female")] - by_proj[("mean", "Male")]
+    diagnostics.append(("n_s_cats_by_proj_age_gen", by_proj))
+    by_proj = (
+        mf_only.groupby(["project_name", "recipient_gender"])["agg_cat_cnt"]
+        .describe()[["count", "mean"]]
+        .unstack()
+    )
+    by_proj["diff"] = by_proj[("mean", "Female")] - by_proj[("mean", "Male")]
+    diagnostics.append(("n_s_agg_cats_by_proj_age_gen", by_proj))
 
 
 def cut_by_proj(df, sum_cols):
@@ -503,10 +535,10 @@ def analyze_category_props_by_group(df):
     num_w_over_1_prct = summary_counts[summary_counts.Prct > 0.01]
     num_w_under_1_prct = summary_counts[summary_counts.Prct <= 0.01]
 
-    str_res[
-        "top_response_categories_by_response_mdtbl"
-    ] = num_w_over_1_prct.reset_index(names=["Agg. category", "Category"]).to_markdown(
-        index=False, floatfmt=(None, None, ",.0f", ".1%", ".1%")
+    str_res["top_response_categories_by_response_mdtbl"] = (
+        num_w_over_1_prct.reset_index(names=["Agg. category", "Category"])
+        .sort_values("IW Prct", ascending=False)
+        .to_markdown(index=False, floatfmt=(None, None, ",.0f", ".1%", ".1%"))
     )
     str_res["sel_by_over_1_prct"] = len(num_w_over_1_prct)
     str_res["total_sel_by_under_1_prct"] = num_w_under_1_prct["N"].sum()
@@ -591,12 +623,21 @@ def analyze_category_props_by_group(df):
     )
 
     # By year
-    by_year = prop_tbl_by_cut(df, "year", "agg_ohe", grp_disp_name="Xfer year")
-    xls_res.append(("by_year", by_year))
+
+    xls_res.append(
+        (
+            "by_year",
+            prop_tbl_by_cut(
+                df, "year", "agg_ohe", grp_disp_name="Xfer year"
+            ).sort_index(),
+        )
+    )
     xls_res.append(
         (
             "by_year_iw",
-            prop_tbl_by_cut(df, "year", "norm_agg_ohe", grp_disp_name="Xfer year"),
+            prop_tbl_by_cut(
+                df, "year", "norm_agg_ohe", grp_disp_name="Xfer year"
+            ).sort_index(),
         )
     )
 
@@ -702,7 +743,7 @@ def demo_factor_analysis(df):
         model = smf.ols(formula=formula, data=rcp_cnts).fit(
             cov_type="cluster", cov_kwds={"groups": rcp_cnts["project_name"]}
         )
-        print(model.summary())
+        # print(model.summary())
 
         res[outcome] = extract_model_info(model, fets)
     res = pd.concat(res).round(3)

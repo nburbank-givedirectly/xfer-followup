@@ -10,16 +10,17 @@ fontsize: 10pt
 output: pdf_document
 ---
 
+# Notes on recipient expenditure patterns
+_Nathaniel Burbank, Central Data, {cur_date}_
 
-
-# Key takeaways  
+## Key takeaways  
 
 - Among GiveDirectly recipients, {most_popular_category_prct:.1%} report spending part or all of their transfer on {most_popular_category_lc}, making it the most commonly reported expense category.
 - {prop_w_resp_in_top_5:.1%} of surveyed respondents indicated that they spent at least part of their transfer on one or more of {top_5_str} expenses.
 - Only {vice_prct:.2%} of respondents, or slightly more than 1 in 1000 respondents, report spending any part of their transfer on a "vice activity" (alcohol, drugs, etc.). 
 - The number of expense categories recipients typically select varies significantly by age and gender, with female and older recipients choosing more categories on average.
 - After adjusting for the differing propensity to select multiple expense categories by demographic factors and the compositional differences across projects, there is evidence for a mild positive association between female gender and food spending, and a negative link between female gender and agricultural activities. Additionally, older recipients report spending more on food and healthcare and less on business activities.
-- We have a [full breakdown](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=1671298084) of both the raw response percentages and response percentages inverse-weighted by the number of categories selected, subdivided by country, project, recipient gender, and recipient age.
+- We have a [full breakdown](https://docs.google.com/spreadsheets/d/184txFsl9PnPbZav1lzhNk_th_r4OkiowhZepRBeaERQ/edit#gid=156678688) of both the raw response percentages and response percentages inverse-weighted by the number of categories selected, subdivided by country, project, recipient gender, and recipient age.
 
 ## Dataset construction 
 
@@ -33,7 +34,7 @@ From the initial four year dataset, ineligible, discarded, written off, and refu
 
 There are three primary challenges when working with data derived from the Spending Categories question. The first challenge is that there are multiple versions of this question stored in multiple locations. The most common variant has 48 distinct expense category options; a recently expanded version in the research object contains 64 distinct options.[^4] This analysis aggregates over both versions.
 
-The second challenge is the large number of defined spending categories within these questions, some of which overlap. Of the 64 defined categories, only {N_cats_with_resp} were chosen by recipients in the last four years, with just {sel_by_over_1_prct} selected by over 1% of respondents. To identify broader trends, I consolidated these 64 categories into ten main groupings, which can be found in the [detailed_categories](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=210478292) tab of the project results spreadsheet.[^5] This grouping is necessarily somewhat arbitrary.
+The second challenge is the large number of defined spending categories within these questions, some of which overlap. Of the 64 defined categories, only {N_cats_with_resp} were chosen by recipients in the last four years, with just {sel_by_over_1_prct} selected by over 1% of respondents. To identify broader trends, I consolidated these 64 categories into ten main groupings, which can be found in the [detailed_categories](https://docs.google.com/spreadsheets/d/184txFsl9PnPbZav1lzhNk_th_r4OkiowhZepRBeaERQ/edit#gid=572821971) tab of the project results spreadsheet.[^5] This grouping is necessarily somewhat arbitrary.
 
 The third challenge is that the number of expense categories recipients typically choose varies significantly by age and gender. Over the past four years respondents selected {mean_number_of_cats} expense categories on average. However, there is significant variation in this count across demographic subgroups. Female recipients selected an average of {mean_number_of_cats_female} categories, or {mean_number_of_cats_gender_diff} more categories than the average male recipient who selected {mean_number_of_cats_male} categories. Moreover, older recipients, regardless of gender, selected more categories compared to younger recipients on average. See the [appendix](#more-on-the-relationship-between-demographic-factors-and-the-number-of-categories-selected) for more on these differences.
 
@@ -55,7 +56,7 @@ Aggregating categories is useful to see overall trends, but it is somewhat arbit
 
 {top_response_categories_by_response_mdtbl}
 
-On this list, food and education expenses maintain their positions in the first and third most popular categories, respectively, while the order of other items is quite different. The full table of response weighted expense category counts and percentages can be found in the [detailed_categories](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=210478292) tab of the project results spreadsheet.
+On this list, food and education expenses maintain their positions in the first and third most popular categories, respectively, while the order of other items is quite different. The full table of response weighted expense category counts and percentages can be found in the [detailed_categories](https://docs.google.com/spreadsheets/d/184txFsl9PnPbZav1lzhNk_th_r4OkiowhZepRBeaERQ/edit#gid=572821971) tab of the project results spreadsheet.
 
 
 #### Spending on "vice" categories   
@@ -64,7 +65,7 @@ As noted above, a small percentage of respondents ({vice_prct:.2%}) reported spe
 
 ### Response-weighted aggregated expense categories by project and demographic characteristics
 
-Using the higher-level expense categories, I calculated both the raw percentage of respondents who reported spending part or all of their transfer in each category and the inverse-weighted percentages across project, country, age, and gender subgroups. These tables can be found in the `by_proj`, `by_country`, etc., tabs within the [project results](https://docs.google.com/spreadsheets/d/1JCUi14PHUhlf1HsGszGtXnHfg85GYWp5F2Q0tDWb2f4/edit#gid=1938336393) spreadsheet, with the `_iw` suffix indicating an inverse weighted version of the analysis.
+Using the higher-level expense categories, I calculated both the raw percentage of respondents who reported spending part or all of their transfer in each category and the inverse-weighted percentages across project, country, age, and gender subgroups. These tables can be found in the `by_proj`, `by_country`, etc., tabs within the [project results](https://docs.google.com/spreadsheets/d/184txFsl9PnPbZav1lzhNk_th_r4OkiowhZepRBeaERQ/edit#gid=1154303096) spreadsheet, with the `_iw` suffix indicating an inverse weighted version of the analysis.
 
 ## Preliminary analysis on associations between demographic characteristics and spending outcomes
 
@@ -109,7 +110,7 @@ One concern with the _Response-weighted aggregated expense categories_ table abo
 
 {top_aggregated_response_categories_rcp_mdtbl}
 
-With the exception of the Entrepreneurship and Household categories, the order is the same is in the version that is weighted by the number of respondents in the main text.
+With the exception of the Entrepreneurship and Household categories, the order is the same as in the version that is weighted by the number of respondents in the main text.
 
 ### Regression specification for demographic factor association models{#regression-specification-for-demographic-factor-association}
 
