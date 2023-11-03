@@ -21,7 +21,6 @@ def escape_brackets(s):
 
     lines = s.split("\n")
     for line in lines:
-
         if line.startswith(start_delimiter) and not inside_delimiters:
             inside_delimiters = True
             escaped_lines.append(line)

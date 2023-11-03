@@ -98,11 +98,17 @@ If I were to spend more time on this analysis, these are the areas I would focus
 
 ### More on the relationship between demographic factors and the number of categories selected{#more-on-the-relationship-between-demographic-factors-and-the-number-of-categories-selected}
 
-The plot below presents the mean number of expense categories chosen by recipients, classified by both gender and age. Each data point represents the average number of categories selected by a specific gender within a specific age cohort. The error bars indicate two standard errors from the mean.
+The plot below presents the mean number of expense categories chosen by recipients, subdivided by both gender and age. Each data point represents the average number of (ungrouped) categories selected by a specific gender within a specific age cohort. The error bars indicate two standard errors from the mean.
 
 ![Number of expense categories selected](output/cat_selected.png)
 
 Both the age and gender differences in the number of categories selected are apparent: female recipients are more likely to select a larger number of expense categories than male recipients across all age groups. Additionally, older recipients are more likely to select a larger number of expense categories than younger recipients, regardless of gender.
+
+A potential concern is that the observed variation in the number of expense categories selected across demographic characteristics could stem from a combination of survey design differences and demographic differences across projects rather than a true link between recipient demographics and their choice of categories. To address this, the plot below separates the average number of categories chosen by both project and gender. In this plot, each green dot shows the average number of distinct categories selected by male recipients in a specific project, while each blue dot represents female recipients. The size of the dots indicates the size of the recipient group for each gender within the project: larger dots signify more recipients of that gender.[^10] Additional dashed vertical lines display the average number of categories selected by gender across projects.[^11] 
+
+![Number of expense categories selected by project](output/cat_selected_by_proj.png)
+
+While there are substantial differences in the number of categories selected across projects, there remains a small but consistent difference within projects by recipient gender as well, with female recipients selecting more categories than their male counterparts on average in 26 out of 33 projects. Emergency response projects (clustered in the upper left) seem to have a smaller number of responses and smaller differences by gender. Conversely, gender differences are largest in Uganda and Rwanda's large transfer programs.
 
 ### Recipient-weighted aggregated expense categories{#recipient-weighted-aggregated-expense-categories}
 
@@ -131,20 +137,16 @@ We're primarily interested in $\beta_1$ and $\beta_2$, the fit coefficients for 
 
 
 [^1]: The base Databricks query is [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/base_query.sql). Survey records in the research object were linked to transfers via follow up records with identical recipient ids and similar timestamps. In rare cases transfers can be linked to more than one successfully completed followup survey. In these cases, only the most recent survey record was used.
-
 [^2]: The numerator for [this proportion](https://github.com/nburbank-givedirectly/xfer-followup/blob/main/queries/prop_xfers_w_flup.sql) is the count of successful follow-up records that can be matched to a transfer id and have a `recipient_inactive_stage` of 0. The denominator is the count of all complete transfers with a creation date between October 1st, 2019 and September 30th, 2023.
-
 [^3]: Most notably these questions were asked to recipients within the _Malawi Canva Basic Income Pilot_ and the _Liberia Maryland Basic Income_ programs.  
-
 [^4]: In Field Salesforce, this is the `What_Did_The_Recipient_Spend_On` [question](https://givedirectly-field.my.salesforce.com/00N0b00000BuyeP?appLayout=setup&entityId=01I0b000001NFO0&noS1Redirect=true) within the Followup Object and the `Spending_Categories` [question](https://givedirectly-field.lightning.force.com/lightning/setup/ObjectManager/01I5a0000017dHL/FieldsAndRelationships/00N5a00000CsZNr/view) within the research object.
-
 [^5]: The full mapping, including categories that were never used in the past four years, is defined [here](https://github.com/nburbank-givedirectly/xfer-followup/blob/22fac762e351be90505d6100118df603485aeec9/src/mappings.py#L337).
 [^6]: Note that when tallying selections within the aggregated categories, multiple selections by a recipient within a single aggregated category are counted as a single response. When normalizing percentages across aggregated categories, response counts are inversely weighted by the number of aggregated categories selected, not the number of detailed categories.
 [^7]: In other words,  `recipient_inactive_stage` is 0.
-
 [^8]: The word "average" is doing a lot of work in this sentence. The point is, we want some sense of what the strongest associations are across countries and projects within the populations that we tend to serve. But the results of this type of observational modeling are always going to be heavily affected by, and downstream of, recipient targeting criteria and methods.
-
 [^9]: Full regression specification is in [the appendix](#regression-specification-for-demographic-factor-association).
+[^10]: Note that the _Kenya Urban Women COVID-19 Emergency Relief_ project and the _Kenya Buildher GIC Cash+_ project had no male recipients.
+[^11]:  These averages are for the _ungrouped_ number of categories chosen.
 
 
 

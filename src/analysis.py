@@ -16,7 +16,7 @@ from mappings import (
     PROJECT_NAME_ABBREVIATIONS,
     VICE_CATEGORIES,
 )
-from plots import expense_cats_plot
+from plots import expense_cats_plot, expense_cats_by_proj_plot
 
 
 # Min number of non-null responses for project to be included
@@ -467,9 +467,11 @@ def number_of_cats_desc_stats(df):
     t_statistic, p_value = stats.ttest_ind(male_cnts, female_cnts)
     str_res["p_val_diff_in_cnt_of_resp_by_gender"] = round(p_value, 3)
     str_res["t_stat_diff_in_cnt_of_resp_by_gender"] = round(t_statistic, 3)
+    # Redo by project
     n_cats = df[
-        ["project_name", "recipient_gender", "age_group", "cat_cnt", "agg_cat_cnt"]
+        ["project_name", "proj_name", "recipient_gender", "age_group", "cat_cnt", "agg_cat_cnt"]
     ]
+    expense_cats_by_proj_plot( n_cats)
     mf_only = n_cats[n_cats["recipient_gender"].isin(["Male", "Female"])]
     by_proj = (
         mf_only.groupby(["project_name", "recipient_gender"])["cat_cnt"]
@@ -486,6 +488,8 @@ def number_of_cats_desc_stats(df):
     by_proj["diff"] = by_proj[("mean", "Female")] - by_proj[("mean", "Male")]
     diagnostics.append(("n_s_agg_cats_by_proj_age_gen", by_proj))
 
+
+    
 
 def cut_by_proj(df, sum_cols):
     # Calculate by project
@@ -554,6 +558,13 @@ def analyze_category_props_by_group(df):
     ## Category props
 
     df.sort_index(axis=1, inplace=True)
+
+    # Make table of full results by program
+    res = {}
+    for proj in df.proj_name.value_counts().index:
+        res[proj] = categories_by_response_rate(df[df.proj_name == proj]["ohe"], "cats_by_respondent")
+
+    diagnostics.append(('full_cnt_by_proj',pd.concat(res,axis=1)))
     df = df.drop("ohe", axis=1, level=0)
     df.columns = df.columns.droplevel(-1)
 
@@ -598,6 +609,9 @@ def analyze_category_props_by_group(df):
     xls_res.append(("by_proj", by_proj))
     xls_res.append(("by_proj_iw", cut_by_proj(df, "norm_agg_ohe")))
 
+
+
+
     # By country
     by_country = prop_tbl_by_cut(df, "country", "agg_ohe", grp_disp_name="Country")
     xls_res.append(("by_country", by_country))
@@ -623,7 +637,6 @@ def analyze_category_props_by_group(df):
     )
 
     # By year
-
     xls_res.append(
         (
             "by_year",
@@ -637,6 +650,24 @@ def analyze_category_props_by_group(df):
             "by_year_iw",
             prop_tbl_by_cut(
                 df, "year", "norm_agg_ohe", grp_disp_name="Xfer year"
+            ).sort_index(),
+        )
+    )
+
+    # By followup type (call center vs field)
+    xls_res.append(
+        (
+            "by_flup_type",
+            prop_tbl_by_cut(
+                df, "follow_up_type", "agg_ohe", grp_disp_name="flup type"
+            ).sort_index(),
+        )
+    )
+    xls_res.append(
+        (
+            "by_flup_type_iw",
+            prop_tbl_by_cut(
+                df, "follow_up_type", "norm_agg_ohe", grp_disp_name="flup type"
             ).sort_index(),
         )
     )
@@ -813,6 +844,6 @@ def dl_and_analyze_data():
 
 if __name__ == "__main__":
     results = dl_and_analyze_data()
-    import IPython
+    # import IPython
 
-    IPython.embed()
+    # IPython.embed()
