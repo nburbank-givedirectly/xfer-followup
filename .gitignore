@@ -160,7 +160,8 @@ cython_debug/
 #.idea/
 
 **/.DS_Store
+.pylintrc
 data_cache/*
 output/*
-src/nb_secrets.py
+src/db_secrets.py
 figures/*

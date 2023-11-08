@@ -1,21 +1,25 @@
+"""Matplotlib plots."""
+
 import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def expense_cats_plot(n_spend_df: pd.DataFrame) -> None:
+def expense_cats_plot(df: pd.DataFrame) -> None:
+    """Generate number of expense categories vs age & gender plot."""
+    df = df[["recipient_gender", "age_group", "cat_cnt"]].copy()
     means = (
-        n_spend_df[n_spend_df["recipient_gender"].isin(["Male", "Female"])]
+        df[df["recipient_gender"].isin(["Male", "Female"])]
         .groupby(["recipient_gender", "age_group"])
         .mean()
     )
     std_errors = (
-        n_spend_df[n_spend_df["recipient_gender"].isin(["Male", "Female"])]
+        df[df["recipient_gender"].isin(["Male", "Female"])]
         .groupby(["recipient_gender", "age_group"])
         .sem()
         * 2
     )
 
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.plot(
         means.loc["Female"].index,
         means.loc["Female"],
@@ -56,24 +60,21 @@ def expense_cats_plot(n_spend_df: pd.DataFrame) -> None:
 
 
 def expense_cats_by_proj_plot(n_cats: pd.DataFrame) -> None:
+    """Generate number of expense categories vs gender & project plot."""
     mf_only = n_cats[n_cats["recipient_gender"].isin(["Male", "Female"])]
     by_proj = (
         mf_only.groupby(["proj_name", "recipient_gender"])["cat_cnt"]
         .describe()[["count", "mean"]]
         .unstack()
     )
-
     overall_by_proj = mf_only.groupby(["proj_name"])["cat_cnt"].describe()[
         ["count", "mean"]
     ]
-
     overall_by_proj.columns = pd.MultiIndex.from_tuples(
         [(c, "overall") for c in overall_by_proj.columns]
     )
-
     sems = mf_only.groupby(["proj_name", "recipient_gender"])["cat_cnt"].sem().unstack()
     sems.columns = pd.MultiIndex.from_tuples([("sem", c) for c in sems.columns])
-    # sems = sems.fillna(0)
     by_proj = pd.concat([by_proj, sems, overall_by_proj], axis=1)
     by_proj = by_proj.sort_values(("mean", "overall"), ascending=False)
 
@@ -92,11 +93,10 @@ def expense_cats_by_proj_plot(n_cats: pd.DataFrame) -> None:
     counts["female_sizes"] = (counts["Female"] - stacked.mean()) / stacked.std()
     counts["male_sizes"] = (counts["Male"] - stacked.mean()) / stacked.std()
 
-    counts["female_sizes"] = 10 + counts["female_sizes"] * 4.5 
-    counts["male_sizes"] = 10 + counts["male_sizes"] * 4.5 
+    counts["female_sizes"] = 10 + counts["female_sizes"] * 4.5
+    counts["male_sizes"] = 10 + counts["male_sizes"] * 4.5
 
-
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
 
     ax.scatter(
         means["Female"],

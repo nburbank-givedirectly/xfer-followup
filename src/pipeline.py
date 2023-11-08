@@ -11,7 +11,7 @@ START_DT = "2019-10-01"
 END_DT = "2023-10-01"
 
 
-def escape_brackets(s):
+def escape_brackets(templete: str) -> str:
     """Escape brackets within math sections with markdown docs from replacement"""
     start_delimiter = "$$"
     end_delimiter = "$$"
@@ -19,7 +19,7 @@ def escape_brackets(s):
     escaped_lines = []
     inside_delimiters = False
 
-    lines = s.split("\n")
+    lines = templete.split("\n")
     for line in lines:
         if line.startswith(start_delimiter) and not inside_delimiters:
             inside_delimiters = True
@@ -88,6 +88,12 @@ def gen_excel(xls_results, output_str, also_tsv=True):
 if __name__ == "__main__":
     if not os.path.exists("output"):
         os.makedirs("output")
+
+    if not os.path.exists("queries"):
+        os.makedirs("queries")
+
+    if not os.path.exists("data_cache"):
+        os.makedirs("data_cache")
 
     mk_base_query(filename="queries/base_query")
     mk_val_query(filename="queries/prop_xfers_w_flup")

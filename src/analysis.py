@@ -1,12 +1,11 @@
-#!/usr/bin/env python
+"""Run analysis and save results to RESULTS global variable."""
 
 import os
 import datetime
 from typing import Dict, List
 import pandas as pd
-import statsmodels.api as sm
 import statsmodels.formula.api as smf
-import scipy.stats as stats
+from scipy import stats
 
 from helpers import get_df
 from mappings import (
@@ -24,7 +23,7 @@ MIN_PROJ_N = 1000
 # Min proportion of follow-up surveys for which spending category question is non-null.
 MIN_PROJ_PROP = 0.8
 
-
+# Global container variable to hold results
 RESULTS = {
     "str_results": {},
     "xls_results": [],
@@ -129,8 +128,6 @@ def get_base_data():
 
 
 # Feature creation
-
-
 def split_and_ohe_str_lst(df, col, category_aggregations, agg=True):
     """Splits and one-hot encodes the selected column using the supplied category aggregations dict."""
     print(
@@ -187,7 +184,9 @@ def gen_multi_level_spend(df, category_aggregations_spend):
     return spend_df.fillna(0).sort_index(axis=1).T.groupby(level=0).sum().T
 
 
-def add_features(df, aggregate_to_detailed_spend_category, survey_aggregation=None):
+def add_features(
+    df, aggregate_to_detailed_spend_category, survey_aggregation=None
+) -> pd.DataFrame:
     """Add age group and abbreviated project name columns to dataframe"""
 
     # Drop spending cols for now
@@ -198,11 +197,12 @@ def add_features(df, aggregate_to_detailed_spend_category, survey_aggregation=No
     # Set index
     df = df.set_index(["rcpnt_fu_num", "recipient_id", "transfer_id", "fu_id"])
 
-    # Project features
+    # Short project name
     df["proj_name"] = (
         df["project_name"].replace(PROJECT_NAME_ABBREVIATIONS, regex=True).str.strip()
     )
 
+    # Project type
     proj_nm_to_type = {"Mozambique USAID Agricultural Lump-Sum": "Large Transfer"}
     project_types = ["Large Transfer", "Emergency Relief", "Basic Income", "Cash+"]
     for p in df.project_name.unique():
@@ -231,10 +231,10 @@ def add_features(df, aggregate_to_detailed_spend_category, survey_aggregation=No
     # Transaction features
     df["year"] = df["completed_date"].dt.year
 
+    # Make detailed/grouped one-hot-encoded count columns, and associated normed versions
     ohe = split_and_ohe_str_lst(
         df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
     )
-
     if survey_aggregation == "weighted_avg":
         ohe = ohe.groupby("recipient_id").sum()
         df = df.loc[1]
@@ -329,14 +329,10 @@ def prop_tbl_by_cut(
 def cnts_by_proj(df, min_prop=0.8, min_N=1000):
     """Calculates basic stats by project"""
     df = df.copy()
-    start_projs = df["project_name"].unique()
     df["completed_date"] = df["completed_date"].dt.strftime("%Y-%m-%d")
-
-    start_rows = len(df)
     df["non_null_pick_lst"] = ~df["spending_categories"].isnull()
     df["has_res_id"] = ~df["res_id"].isnull()
-
-    quant_spend_cols = list(set([c for c in PICK_LST_TO_QUANTS_COLS.values()]))
+    quant_spend_cols = list(set(PICK_LST_TO_QUANTS_COLS.values()))
     df["how_much_non_null"] = df[quant_spend_cols].notna().any(axis=1)
 
     grp = (
@@ -415,6 +411,7 @@ def categories_by_response_rate(ohe: pd.DataFrame, name: str) -> pd.DataFrame:
 
 
 def add_xls_note():
+    """Generate note for excel file with basic meta data"""
     notes = [
         f"This analysis was generated on {datetime.datetime.now().strftime('%m/%d/%y')}.",
         f"This data set is a roll-up of responses to the Spending Categories question between October of 2019 and October of 2023."
@@ -445,16 +442,25 @@ def number_of_cats_desc_stats(df):
     """descriptive stats about number of categories selected"""
     str_res = RESULTS["str_results"]
     diagnostics = RESULTS["diagnostics"]
-    n_cats = df[["recipient_gender", "age_group", "cat_cnt"]]
+    n_cats = df[
+        [
+            "project_name",
+            "proj_name",
+            "recipient_gender",
+            "age_group",
+            "cat_cnt",
+            "agg_cat_cnt",
+        ]
+    ]
     n_cats.columns = [c[0] for c in n_cats.columns]
     by_gender = n_cats.groupby(["recipient_gender"])["cat_cnt"].describe()
-    by_age = n_cats.groupby(["age_group"])["cat_cnt"].describe()
-    str_res["mean_number_of_cats"] = n_cats["cat_cnt"].mean().round(2)
-    str_res["mean_number_of_cats_female"] = by_gender.loc["Female"]["mean"].round(2)
-    str_res["mean_number_of_cats_male"] = by_gender.loc["Male"]["mean"].round(2)
+    # by_age = n_cats.groupby(["age_group"])["cat_cnt"].describe()
+    str_res["mean_number_of_cats"] = n_cats["cat_cnt"].mean()
+    str_res["mean_number_of_cats_female"] = by_gender.loc["Female"]["mean"]
+    str_res["mean_number_of_cats_male"] = by_gender.loc["Male"]["mean"]
     str_res["mean_number_of_cats_gender_diff"] = abs(
         by_gender.loc["Female"]["mean"] - by_gender.loc["Male"]["mean"]
-    ).round(2)
+    )
     age_and_gen = (
         n_cats[n_cats["recipient_gender"].isin(["Male", "Female"])]
         .groupby(["age_group", "recipient_gender"])
@@ -468,10 +474,8 @@ def number_of_cats_desc_stats(df):
     str_res["p_val_diff_in_cnt_of_resp_by_gender"] = round(p_value, 3)
     str_res["t_stat_diff_in_cnt_of_resp_by_gender"] = round(t_statistic, 3)
     # Redo by project
-    n_cats = df[
-        ["project_name", "proj_name", "recipient_gender", "age_group", "cat_cnt", "agg_cat_cnt"]
-    ]
-    expense_cats_by_proj_plot( n_cats)
+
+    expense_cats_by_proj_plot(n_cats)
     mf_only = n_cats[n_cats["recipient_gender"].isin(["Male", "Female"])]
     by_proj = (
         mf_only.groupby(["project_name", "recipient_gender"])["cat_cnt"]
@@ -489,10 +493,9 @@ def number_of_cats_desc_stats(df):
     diagnostics.append(("n_s_agg_cats_by_proj_age_gen", by_proj))
 
 
-    
-
 def cut_by_proj(df, sum_cols):
-    # Calculate by project
+    """special handling for by project cuts"""
+
     by_proj = prop_tbl_by_cut(
         df,
         "project_name",
@@ -526,6 +529,10 @@ def analyze_category_props_by_group(df):
     """
     Analyze the proportion of respondents in diff spending categories at
     the detailed and aggregated level by a number of different cuts.
+
+    TODO: Abstract this out to a single function that operates at a single granularity/normalization.
+    What's confusing currently is jumping between different granularity for presentation purposes.
+
     """
     # Setup res objs and
     str_res = RESULTS["str_results"]
@@ -553,18 +560,26 @@ def analyze_category_props_by_group(df):
     str_res["vice_prct"] = df["ohe"][
         [("Other", c) for c in VICE_CATEGORIES]
     ].sum().sum() / len(df)
-
-    # For rest of analysis, sum up to higher level categories
-    ## Category props
-
     df.sort_index(axis=1, inplace=True)
 
     # Make table of full results by program
+    # Includes counts, percents, and centered percents
     res = {}
     for proj in df.proj_name.value_counts().index:
-        res[proj] = categories_by_response_rate(df[df.proj_name == proj]["ohe"], "cats_by_respondent")
-
-    diagnostics.append(('full_cnt_by_proj',pd.concat(res,axis=1)))
+        res[proj] = categories_by_response_rate(
+            df[df.proj_name == proj]["ohe"], "cats_by_respondent"
+        )
+    by_proj = pd.concat(res, axis=1)
+    prct_cols = [c for c in by_proj.columns if c[1] == "Prct"]
+    by_proj = by_proj[prct_cols].copy()
+    by_proj.columns = by_proj.columns.droplevel(-1)
+    diffs = by_proj.sub(summary_counts["Prct"], axis=0)
+    diffs.columns = pd.MultiIndex.from_tuples([(c, "centered") for c in diffs.columns])
+    diagnostics.append(
+        ("full_cnt_by_proj", pd.concat(res, axis=1).join(diffs).sort_index(axis=1))
+    )
+    # For rest of analysis, sum up to higher level categories
+    ## Category props
     df = df.drop("ohe", axis=1, level=0)
     df.columns = df.columns.droplevel(-1)
 
@@ -600,21 +615,21 @@ def analyze_category_props_by_group(df):
     ).to_markdown(floatfmt=(None, ",.0f", ".1%", ".1%"))
 
     # Calculate response counts by recipient who only picked one category
-    categories_by_response_rate(
-        df[df["agg_cat_cnt"] == 2]["agg_ohe"].loc[1], "agg_cats_single"
-    )
+    # categories_by_response_rate(
+    #     df[df["agg_cat_cnt"] == 2]["agg_ohe"].loc[1], "agg_cats_single"
+    # )
 
     # Calculate by project
-    by_proj = cut_by_proj(df, "agg_ohe")
-    xls_res.append(("by_proj", by_proj))
+    xls_res.append(("by_proj", cut_by_proj(df, "agg_ohe")))
     xls_res.append(("by_proj_iw", cut_by_proj(df, "norm_agg_ohe")))
 
-
-
-
     # By country
-    by_country = prop_tbl_by_cut(df, "country", "agg_ohe", grp_disp_name="Country")
-    xls_res.append(("by_country", by_country))
+    xls_res.append(
+        (
+            "by_country",
+            prop_tbl_by_cut(df, "country", "agg_ohe", grp_disp_name="Country"),
+        )
+    )
     xls_res.append(
         (
             "by_country_iw",
@@ -623,10 +638,14 @@ def analyze_category_props_by_group(df):
     )
 
     # By project type
-    by_proj_type = prop_tbl_by_cut(
-        df, "project_type", "agg_ohe", grp_disp_name="Project Type"
+    xls_res.append(
+        (
+            "by_proj_type",
+            prop_tbl_by_cut(
+                df, "project_type", "agg_ohe", grp_disp_name="Project Type"
+            ),
+        )
     )
-    xls_res.append(("by_proj_type", by_proj_type))
     xls_res.append(
         (
             "by_proj_type_iw",
@@ -716,8 +735,6 @@ def demo_factor_analysis(df):
 
     # Setup res objs and
     str_res = RESULTS["str_results"]
-    xls_res = RESULTS["xls_results"]
-    diagnostics = RESULTS["diagnostics"]
 
     def extract_model_info(model, feature_names):
         coeffs = model.params[feature_names]
@@ -811,12 +828,12 @@ def dl_and_analyze_data():
     aggregate_to_detailed_spend_category = further_group_agg_spend_catigories(
         AGGREGATE_TO_DETAILED_SPEND_CATEGORY, OTHER_AGGREGATE_SPEND_CATIGORIES
     )
-    category_aggregations_spend = mk_category_aggregations_spend(
-        aggregate_to_detailed_spend_category, PICK_LST_TO_QUANTS_COLS
-    )
+    # category_aggregations_spend = mk_category_aggregations_spend(
+    #     aggregate_to_detailed_spend_category, PICK_LST_TO_QUANTS_COLS
+    # )
 
     # DL and featureize the dataset
-    cache_path = f"data_cache/data.pkl.gz"
+    cache_path = "data_cache/data.pkl.gz"
     if os.path.exists(cache_path):
         df = pd.read_pickle(cache_path)
         proj_report = pd.read_pickle("data_cache/proj_report.pkl")
@@ -844,6 +861,6 @@ def dl_and_analyze_data():
 
 if __name__ == "__main__":
     results = dl_and_analyze_data()
-    # import IPython
+    import IPython
 
-    # IPython.embed()
+    IPython.embed()

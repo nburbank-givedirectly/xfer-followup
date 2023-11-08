@@ -8,7 +8,7 @@ import hashlib
 import pandas as pd
 from pandas import read_sql
 import sqlparse
-from nb_secrets import ACCESS_TOKEN
+from db_secrets import ACCESS_TOKEN
 
 
 SERVER_HOSTNAME = "dbc-6e84555a-4b45.cloud.databricks.com"
