@@ -75,6 +75,11 @@ def gen_excel(xls_results, output_str, also_tsv=True):
                 start = df.reset_index().columns.get_loc("Prct")
                 worksheet.set_column(start, start, 8, percent_format)
 
+            for col in df.columns:
+                if "Prct" in col:
+                    start = df.reset_index().columns.get_loc(col)
+                    worksheet.set_column(start, start, 8, percent_format)
+
             if "IW Prct" in df.columns:
                 start = df.reset_index().columns.get_loc("IW Prct")
                 worksheet.set_column(start, start, 8, percent_format)
@@ -101,7 +106,14 @@ if __name__ == "__main__":
     name = f"{datetime.now().date().strftime('%Y%m%d')}_xfer_flup"
     gen_results_md(results["str_results"], name)
     gen_excel(results["xls_results"], name)
-    gen_excel(results["diagnostics"], "diagnostics")
+
+    # Full break down, non aggregated categories
+    gen_excel(
+        [(n, df) for (n, df) in results["diagnostics"] if n == "full_cnt_by_proj"]
+        + [(n, df) for (n, df) in results["xls_results"] if n == "notes"],
+        f"{datetime.now().date().strftime('%Y%m%d')}_full_proj_cnts_xfer_flup",
+    )
+
     gen_excel(results["xls_cnts"], "cat_cnts")
 
     subprocess.run(

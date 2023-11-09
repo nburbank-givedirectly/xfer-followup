@@ -574,9 +574,9 @@ def analyze_category_props_by_group(df):
     by_proj = by_proj[prct_cols].copy()
     by_proj.columns = by_proj.columns.droplevel(-1)
     diffs = by_proj.sub(summary_counts["Prct"], axis=0)
-    diffs.columns = pd.MultiIndex.from_tuples([(c, "centered") for c in diffs.columns])
+    diagnostics.append(('largest_diffs_by_cat',pd.DataFrame({'program':abs(diffs).T.idxmax(axis=0), 'max_diff': abs(diffs).T.max()}).sort_values('max_diff',ascending=False)))
     diagnostics.append(
-        ("full_cnt_by_proj", pd.concat(res, axis=1).join(diffs).sort_index(axis=1))
+        ("full_cnt_by_proj", pd.concat(res, axis=1))
     )
     # For rest of analysis, sum up to higher level categories
     ## Category props
