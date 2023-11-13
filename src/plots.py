@@ -50,9 +50,10 @@ def expense_cats_plot(df: pd.DataFrame) -> None:
         ecolor="green",
         capsize=4,
     )
-    plt.title("Number of expense categories selected by recipient demographics")
+    # plt.title("Number of expense categories selected by recipient demographics")
+    # plt.title("Selected number of expense\n categories by recipient demographics")
     plt.xlabel("Recipient age at time of contact")
-    plt.ylabel("Mean number of expense categories selected")
+    plt.ylabel("Mean num. of categories selected")
     plt.legend()
     plt.grid()
     plt.ylim(bottom=0)
@@ -150,9 +151,9 @@ def expense_cats_by_proj_plot(n_cats: pd.DataFrame) -> None:
     #     capsize=2,
     # )
 
-    plt.title("Number of expense categories selected by project")
+    #plt.title("Selected number of expense\n categories by project")
     plt.ylabel("Project")
-    plt.xlabel("Mean number of expense categories selected")
+    plt.xlabel("Mean num. of categories selected")
     plt.legend(prop={"size": 6})
     plt.grid(alpha=0.25)
     ax.tick_params(axis="both", labelsize=6)
