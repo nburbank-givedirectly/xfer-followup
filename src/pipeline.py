@@ -48,6 +48,12 @@ def gen_results_md(results, name) -> None:
         file.write(output_str)
 
 
+def number_to_alphabet(num):
+    if 1 <= num <= 26:
+        return chr(num + 64)
+    else:
+        return None
+
 def gen_excel(xls_results, output_str, also_tsv=True):
     """Make excel file with one table per sheet."""
 
@@ -65,7 +71,14 @@ def gen_excel(xls_results, output_str, also_tsv=True):
             if "Agriculture" in df.columns:
                 start = df.reset_index().columns.get_loc("Agriculture")
                 end = df.reset_index().columns.get_loc("Savings")
-                worksheet.set_column(start, end, 8, percent_format)
+                worksheet.set_column(start, end, 12, percent_format)
+
+                i = 1
+                for col in df.reset_index().columns[start:end+1]:
+                    col_let = number_to_alphabet(start + i)
+                    i += 1
+                    if col_let:
+                        worksheet.conditional_format(f'{col_let}1:{col_let}{len(df)+1}', {'type': '3_color_scale', 'mid_color':'white', 'max_color':'#A9CCE3', 'min_color':'#E6B0AA'})
 
             if "N" in df.columns:
                 start = df.reset_index().columns.get_loc("N")
@@ -73,16 +86,21 @@ def gen_excel(xls_results, output_str, also_tsv=True):
 
             if "Prct" in df.columns:
                 start = df.reset_index().columns.get_loc("Prct")
-                worksheet.set_column(start, start, 8, percent_format)
+                worksheet.set_column(start, start, 12, percent_format)
 
             for col in df.columns:
                 if "Prct" in col:
                     start = df.reset_index().columns.get_loc(col)
-                    worksheet.set_column(start, start, 8, percent_format)
+                    worksheet.set_column(start, start, 12, percent_format)
+
 
             if "IW Prct" in df.columns:
                 start = df.reset_index().columns.get_loc("IW Prct")
-                worksheet.set_column(start, start, 8, percent_format)
+                worksheet.set_column(start, start, 12, percent_format)
+
+            if "Notes" in df.columns:
+                start = df.reset_index().columns.get_loc("Notes")
+                worksheet.set_column(start, start, 80)
 
             if also_tsv:
                 if not os.path.exists("output/tsvs"):

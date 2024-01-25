@@ -185,15 +185,11 @@ def gen_multi_level_spend(df, category_aggregations_spend):
 
 
 def add_features(
-    df, aggregate_to_detailed_spend_category, survey_aggregation=None
+    df, aggregate_to_detailed_spend_category, category_aggregations_spend, survey_aggregation=None
 ) -> pd.DataFrame:
     """Add age group and abbreviated project name columns to dataframe"""
 
-    # Drop spending cols for now
-    df = df.drop(
-        [c for c in df.columns if ("spending" in c and c != "spending_categories")],
-        axis=1,
-    )
+
     # Set index
     df = df.set_index(["rcpnt_fu_num", "recipient_id", "transfer_id", "fu_id"])
 
@@ -230,11 +226,15 @@ def add_features(
 
     # Transaction features
     df["year"] = df["completed_date"].dt.year
+    df = df[df.year < 2024].copy() # Temp hack
 
     # Make detailed/grouped one-hot-encoded count columns, and associated normed versions
     ohe = split_and_ohe_str_lst(
         df, "spending_categories", aggregate_to_detailed_spend_category, agg=False
     )
+
+    agg_scols = gen_multi_level_spend(df, category_aggregations_spend)
+    agg_scols.columns = pd.MultiIndex.from_tuples([("agg_scols", c, "") for c in agg_scols.columns])
     if survey_aggregation == "weighted_avg":
         ohe = ohe.groupby("recipient_id").sum()
         df = df.loc[1]
@@ -270,6 +270,13 @@ def add_features(
     df = df.sort_index(axis=0)
     df = df.sort_index(axis=1)
     df = df.drop("spending_categories", axis=1, level=0)
+    # df = df.join(agg_scols, how="inner")
+
+    # Drop spending cols for now
+    df = df.drop(
+        [c for c in df.columns if ("spending" in c and c != "spending_categories")],
+        axis=1,
+    )
     return df
 
 
@@ -538,6 +545,11 @@ def analyze_category_props_by_group(df):
     str_res = RESULTS["str_results"]
     xls_res = RESULTS["xls_results"]
     diagnostics = RESULTS["diagnostics"]
+    
+
+
+    by_proj_ohe = df[['project_name','norm_agg_ohe']].groupby('project_name').sum().div( df[['project_name','norm_agg_ohe']].groupby('project_name').sum().sum(axis=1), axis=0)
+    # by_proj = df[['project_name','agg_scols']].groupby('project_name').sum() / df[['project_name','agg_scols']].groupby('project_name').sum().sum()
 
     summary_counts = categories_by_response_rate(df["ohe"], "cats_by_respondent")
     summary_counts["IW Prct"] = categories_by_response_rate(
@@ -587,9 +599,9 @@ def analyze_category_props_by_group(df):
     overall["IW Prct"] = categories_by_response_rate(
         df["norm_agg_ohe"], "norm_agg_cats_by_rsp"
     )["Prct"]
-    overall = overall.sort_values("IW Prct", ascending=False)
-    xls_res.append(("overall", overall))
-    xls_res.append(("detailed_cats", summary_counts))
+    overall = overall.sort_values("Prct", ascending=False)
+    xls_res.append(("overall", overall[[c for c in overall.columns if c != 'IW Prct']]))
+    xls_res.append(("detailed_cats", summary_counts[[c for c in summary_counts.columns if c != 'IW Prct']]))
 
     top_5 = list(overall.index[:5])
     top_5_str = [n.lower() for n in top_5]
@@ -615,9 +627,9 @@ def analyze_category_props_by_group(df):
     ).to_markdown(floatfmt=(None, ",.0f", ".1%", ".1%"))
 
     # Calculate response counts by recipient who only picked one category
-    # categories_by_response_rate(
-    #     df[df["agg_cat_cnt"] == 2]["agg_ohe"].loc[1], "agg_cats_single"
-    # )
+    categories_by_response_rate(
+        df[df["agg_cat_cnt"] == 2]["agg_ohe"].loc[1], "agg_cats_single"
+    )
 
     # Calculate by project
     xls_res.append(("by_proj", cut_by_proj(df, "agg_ohe")))
@@ -828,9 +840,9 @@ def dl_and_analyze_data():
     aggregate_to_detailed_spend_category = further_group_agg_spend_catigories(
         AGGREGATE_TO_DETAILED_SPEND_CATEGORY, OTHER_AGGREGATE_SPEND_CATIGORIES
     )
-    # category_aggregations_spend = mk_category_aggregations_spend(
-    #     aggregate_to_detailed_spend_category, PICK_LST_TO_QUANTS_COLS
-    # )
+    category_aggregations_spend = mk_category_aggregations_spend(
+        aggregate_to_detailed_spend_category, PICK_LST_TO_QUANTS_COLS
+    )
 
     # DL and featureize the dataset
     cache_path = "data_cache/data.pkl.gz"
@@ -845,7 +857,7 @@ def dl_and_analyze_data():
         df = filter_projects_w_high_null_rates(
             df, min_prop=MIN_PROJ_PROP, min_N=MIN_PROJ_N
         )
-        df = add_features(df, aggregate_to_detailed_spend_category)
+        df = add_features(df, aggregate_to_detailed_spend_category, category_aggregations_spend)
         df.to_pickle(cache_path)
 
     # Run analysis
@@ -861,6 +873,4 @@ def dl_and_analyze_data():
 
 if __name__ == "__main__":
     results = dl_and_analyze_data()
-    import IPython
 
-    IPython.embed()
