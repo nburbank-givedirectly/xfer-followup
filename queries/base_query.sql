@@ -32,6 +32,7 @@ SELECT fu.Id AS fu_id,
        fu.How_Much_Money_Withdrawn__c,
        fu.Date_of_Follow_up__c,
        fu.Follow_up_Type__c,
+       fu.What_Did_The_Recipient_Spend_On_Other__c,
        COALESCE(res.Spending_Categories__c, fu.What_Did_The_Recipient_Spend_On__c) AS Spending_Categories__c,
        COALESCE(res.Spending_USAID_Banned_Items__c, fu.How_Much_Spent_on_USAID_Banned_Items__c) AS Spending_USAID_Banned_Items__c,
        COALESCE(res.Spending_Livestock__c, fu.How_Much_Spent_on_Livestock__c) AS Spending_Livestock__c,
@@ -94,4 +95,4 @@ AND abs(UNIX_TIMESTAMP(fu.CreatedDate) - UNIX_TIMESTAMP(res.CreatedDate)) < 60
 WHERE t.transfer_status = 'Complete'
   AND t.recipient_inactive_stage = 0
   AND t.transfer_created_date >= '2019-10-01'
-  AND t.transfer_created_date < '2023-10-01'
+  AND t.transfer_created_date < '2024-01-31'

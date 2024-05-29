@@ -3,7 +3,7 @@ import sqlparse
 from mappings import FLUP_TO_RES
 
 START_DT = "2019-10-01"
-END_DT = "2023-10-01"
+END_DT = "2024-01-31"
 
 # Columns to include from the transfers metrics table.
 TRANSFER_COLS = [
@@ -59,6 +59,7 @@ FU_ONLY = [
     "How_Much_Money_Withdrawn__c",
     "Date_of_Follow_up__c",
     "Follow_up_Type__c",
+    "What_Did_The_Recipient_Spend_On_Other__c"
 ]
 
 # Columns to include from the field_salesforce_research table.

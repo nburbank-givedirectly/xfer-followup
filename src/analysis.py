@@ -270,13 +270,16 @@ def add_features(
     df = df.sort_index(axis=0)
     df = df.sort_index(axis=1)
     df = df.drop("spending_categories", axis=1, level=0)
-    # df = df.join(agg_scols, how="inner")
+
+    normed_agg_scols = agg_scols.div(agg_scols.sum(axis=1), axis=0)
+    df = df.join(normed_agg_scols, how="left")
 
     # Drop spending cols for now
     df = df.drop(
         [c for c in df.columns if ("spending" in c and c != "spending_categories")],
         axis=1,
     )
+  
     return df
 
 
@@ -357,6 +360,7 @@ def cnts_by_proj(df, min_prop=0.8, min_N=1000):
     )
 
     grp["Prop_non_null_spend_cats"] = grp["N_non_null_spend_cats"].div(grp["N"])
+    grp["Prop_non_null_how_much"] = grp["N_non_null_how_much"].div(grp["N"])
     grp["Included"] = (grp["Prop_non_null_spend_cats"] > min_prop) & (grp["N"] > min_N)
 
     return grp
@@ -867,6 +871,9 @@ def dl_and_analyze_data():
     demo_factor_analysis(df)
     add_xls_note()
     RESULTS["diagnostics"].append(("by_project_cnts", proj_report))
+    
+    ss = df[df.project_name == 'Malawi Canva Basic Income Pilot']
+    diffs = ss['agg_scols'].mean() - ss['norm_agg_ohe'].mean()
 
     return RESULTS
 
