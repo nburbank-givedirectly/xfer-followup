@@ -16,7 +16,7 @@ SELECT count(*) AS num_trans,
                WHEN fu.What_Did_The_Recipient_Spend_On__c IS NULL THEN 0
                ELSE 1
            END) / count(*) AS spend_cat_prop_overall
-FROM common.field_metrics_transfers t
+FROM prod_gold.field_metrics.transfers t
 LEFT JOIN silver.field_salesforce_followup fu ON fu.Transfer__c = t.transfer_id
 AND fu.IsDeleted = FALSE
 AND fu.Is_Successful__c = TRUE

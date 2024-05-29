@@ -12,7 +12,7 @@ from db_secrets import ACCESS_TOKEN
 
 
 SERVER_HOSTNAME = "dbc-6e84555a-4b45.cloud.databricks.com"
-HTTP_PATH = "/sql/1.0/warehouses/d48c4e74e9fb7034"
+HTTP_PATH = "/sql/1.0/warehouses/3bb0c27a6f0013c3"
 
 
 def generate_hash(string):

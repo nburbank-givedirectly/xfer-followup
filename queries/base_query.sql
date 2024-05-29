@@ -1,6 +1,6 @@
 WITH research AS
   (SELECT *
-   FROM silver.field_salesforce_research
+   FROM prod_silver.field_salesforce.research
    WHERE IsDeleted = FALSE
      AND Research_Checkin_Stage__c = 'FLUP'),
      follow_up AS
@@ -9,7 +9,7 @@ WITH research AS
                             ORDER BY Date_of_Follow_up__c DESC) AS rcpnt_fu_num,
           ROW_NUMBER() over(PARTITION BY Transfer__c
                             ORDER BY Date_of_Follow_up__c DESC) AS tfr_fu_num
-   FROM silver.field_salesforce_followup fu
+   FROM prod_silver.field_salesforce.followup fu
    WHERE fu.IsDeleted = FALSE
      AND fu.Is_Successful__c = TRUE )
 SELECT fu.Id AS fu_id,
@@ -87,7 +87,7 @@ SELECT fu.Id AS fu_id,
        res.Spending_Staff_Training__c,
        res.Spending_Terrorism__c,
        res.Spending_Total__c
-FROM common.field_metrics_transfers t
+FROM prod_gold.field_metrics.transfers t
 JOIN follow_up fu ON fu.Transfer__c = t.transfer_id
 LEFT JOIN research res ON fu.Recipient__c = res.Recipient__c
 AND abs(UNIX_TIMESTAMP(fu.CreatedDate) - UNIX_TIMESTAMP(res.CreatedDate)) < 60

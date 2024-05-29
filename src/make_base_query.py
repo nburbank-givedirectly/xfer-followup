@@ -94,7 +94,7 @@ def mk_base_query(filename: str) -> None:
     query = f"""
     WITH research AS
       (SELECT *
-       FROM silver.field_salesforce_research
+       FROM prod_silver.field_salesforce.research
        WHERE IsDeleted = FALSE
          AND Research_Checkin_Stage__c = 'FLUP'),
          follow_up AS
@@ -103,7 +103,7 @@ def mk_base_query(filename: str) -> None:
                                 ORDER BY Date_of_Follow_up__c DESC) AS rcpnt_fu_num,
                        ROW_NUMBER() over(PARTITION BY Transfer__c
                                 ORDER BY Date_of_Follow_up__c DESC) AS tfr_fu_num
-       FROM silver.field_salesforce_followup fu
+       FROM prod_silver.field_salesforce.followup fu
        WHERE fu.IsDeleted = FALSE
          AND fu.Is_Successful__c = TRUE )
 
@@ -118,7 +118,7 @@ def mk_base_query(filename: str) -> None:
             {','.join([f'COALESCE(res.{res_col}, fu.{fu_col}) as {res_col}' for fu_col,res_col in FLUP_TO_RES.items() ])},
             {','.join([f'res.{c}' for c in RES_ONLY])}
        
-       FROM common.field_metrics_transfers t
+       FROM prod_gold.field_metrics.transfers t
        JOIN follow_up fu ON fu.Transfer__c = t.transfer_id
        LEFT JOIN research res ON fu.Recipient__c = res.Recipient__c
        AND abs(UNIX_TIMESTAMP(fu.CreatedDate) - UNIX_TIMESTAMP(res.CreatedDate)) < 60
@@ -142,7 +142,7 @@ def mk_val_query(filename: str) -> None:
              sum(case WHEN fu.What_Did_The_Recipient_Spend_On__c is NULL THEN 0 ELSE 1 end) AS spend_cat_non_null_cnt,
              sum(case WHEN fu.What_Did_The_Recipient_Spend_On__c is NULL THEN 0 ELSE 1 end) / count(*) AS spend_cat_prop_overall
 
-    FROM common.field_metrics_transfers t
+    FROM prod_gold.field_metrics.transfers t
     LEFT JOIN silver.field_salesforce_followup fu
         ON fu.Transfer__c = t.transfer_id
             AND fu.IsDeleted = FALSE
