@@ -16,6 +16,11 @@ SELECT fu.Id AS fu_id,
        res.Id AS res_id,
        fu.rcpnt_fu_num,
        fu.tfr_fu_num,
+       g.name AS glid,
+       g.Name__c AS village,
+       Parent_Geographic_Level__c AS parent_geo_level_1,
+       Second_Level_Parent_Geographic_Level__c AS parent_geo_level_2,
+       Third_Level_Parent_Geographic_Level__c AS parent_geo_level_3,
        ROW_NUMBER() over(PARTITION BY res.Recipient__c, fu.Id
                          ORDER BY Date_of_Follow_up__c DESC) AS res_fu_num,
        t.transfer_id,
@@ -88,10 +93,17 @@ SELECT fu.Id AS fu_id,
        res.Spending_Terrorism__c,
        res.Spending_Total__c
 FROM prod_gold.field_metrics.transfers t
+JOIN prod_silver.field_salesforce.recipients r ON r.Id = t.recipient_id
+JOIN prod_silver.field_salesforce.geographic_level g ON g.id = r.Geographic_Level__c
 JOIN follow_up fu ON fu.Transfer__c = t.transfer_id
 LEFT JOIN research res ON fu.Recipient__c = res.Recipient__c
 AND abs(UNIX_TIMESTAMP(fu.CreatedDate) - UNIX_TIMESTAMP(res.CreatedDate)) < 60
 WHERE t.transfer_status = 'Complete'
   AND t.recipient_inactive_stage = 0
   AND t.transfer_created_date >= '2019-10-01'
-  AND t.transfer_created_date < '2023-10-01'
+  AND t.transfer_created_date < '2024-05-01'
+  AND t.project_name IN ('Kenya Large Transfer',
+                         'Rwanda STEP Large Transfer',
+                         'Uganda Large Transfer',
+                         'Uganda Karamoja Large Transfer',
+                         'Uganda Abaru Flex Large Transfer')

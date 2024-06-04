@@ -23,4 +23,4 @@ AND fu.Is_Successful__c = TRUE
 WHERE t.transfer_completed = 1
   AND t.recipient_inactive_stage = 0
   AND t.transfer_created_date >= '2019-10-01'
-  AND t.transfer_created_date < '2023-10-01'
+  AND t.transfer_created_date < '2024-05-01'

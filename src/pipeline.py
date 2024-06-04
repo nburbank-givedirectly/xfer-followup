@@ -8,7 +8,7 @@ from analysis import dl_and_analyze_data
 
 
 START_DT = "2019-10-01"
-END_DT = "2023-10-01"
+END_DT = "2024-05-01"
 
 
 def escape_brackets(templete: str) -> str:

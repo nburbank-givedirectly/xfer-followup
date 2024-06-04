@@ -19,9 +19,9 @@ from plots import expense_cats_plot, expense_cats_by_proj_plot
 
 
 # Min number of non-null responses for project to be included
-MIN_PROJ_N = 1000
+MIN_PROJ_N = 100
 # Min proportion of follow-up surveys for which spending category question is non-null.
-MIN_PROJ_PROP = 0.8
+MIN_PROJ_PROP = 0.25
 
 # Global container variable to hold results
 RESULTS = {
@@ -289,6 +289,7 @@ def prop_tbl_by_cut(
     sort_output=True,
     abbr_col_names=True,
     prct=False,
+    div=True
 ):
     """
     Given a cut or category column and a set of columns to sum over, it
@@ -315,7 +316,8 @@ def prop_tbl_by_cut(
     row_cnts = df[cut_col].value_counts()
     grp = df.groupby(cut_col).sum()
 
-    grp = grp.div(row_cnts, axis=0)
+    if div:
+        grp = grp.div(row_cnts, axis=0)
     if prct:
         grp *= 100
     grp["N"] = row_cnts
@@ -421,7 +423,7 @@ def add_xls_note():
     """Generate note for excel file with basic meta data"""
     notes = [
         f"This analysis was generated on {datetime.datetime.now().strftime('%m/%d/%y')}.",
-        f"This data set is a roll-up of responses to the Spending Categories question between October of 2019 and October of 2023."
+        f"This data set is a roll-up of responses to the Spending Categories question between October of 2019 and October of 2024."
         f"Projects with fewer than {MIN_PROJ_N} responses or a completion rate of less than {MIN_PROJ_PROP:.0%} in response to the Spending Categories question are excluded. Recipients who are ineligible, discarded, written off, and refused recipients were also filtered out."
         "N represents the number of respondents. Recipients who completed more than one transfer and follow-up survey within the analysis period are counted multiple times.",
         "Percentage columns show the raw percentage of respondents selecting a particular category. Note that most respondents select more than one category, so these percentages will add up to more than 100%.",
@@ -532,6 +534,39 @@ def cut_by_proj(df, sum_cols):
     return by_proj.set_index(["Country", "Project"])
 
 
+def cut_by_village(df, sum_cols, div=True):
+    """special handling for by project cuts"""
+
+    by_proj = prop_tbl_by_cut(
+        df,
+        "village",
+        sum_cols,
+        grp_disp_name="village",
+        min_grp_cnt=None,
+        sort_output=False,
+        div=div
+    ).reset_index()
+
+    # Hacky way to add country into index
+    proj_to_country = (
+        df[["village", "country"]]
+        .droplevel(-1)
+        .droplevel(-1)
+        .drop_duplicates()
+        .set_index("village")
+        .to_dict(orient="dict")[("country", "")]
+    )
+    proj_to_country["All other"] = "All other"
+
+    by_proj["Country"] = by_proj["village"].map(proj_to_country)
+
+    country_to_blank = {country: "" for country in df["country"].unique()}
+    by_proj["village"] = (
+        by_proj["village"].replace(country_to_blank, regex=True).str.strip()
+    )
+    return by_proj.set_index(["Country", "village"])
+
+
 def analyze_category_props_by_group(df):
     """
     Analyze the proportion of respondents in diff spending categories at
@@ -633,7 +668,15 @@ def analyze_category_props_by_group(df):
 
     # Calculate by project
     xls_res.append(("by_proj", cut_by_proj(df, "agg_ohe")))
-    xls_res.append(("by_proj_iw", cut_by_proj(df, "norm_agg_ohe")))
+    # xls_res.append(("by_proj_cnt", cut_by_proj(df, "agg_ohe", div=False)))
+    # xls_res.append(("by_proj_iw", cut_by_proj(df, "norm_agg_ohe")))
+
+
+    # Caculate by village
+    xls_res.append(("by_village", cut_by_village(df, "agg_ohe")))
+
+    xls_res.append(("by_village_cnt", cut_by_village(df, "agg_ohe", div=False)))
+    # xls_res.append(("by_village_iw", cut_by_village(df, "norm_agg_ohe")))
 
     # By country
     xls_res.append(
@@ -642,12 +685,12 @@ def analyze_category_props_by_group(df):
             prop_tbl_by_cut(df, "country", "agg_ohe", grp_disp_name="Country"),
         )
     )
-    xls_res.append(
-        (
-            "by_country_iw",
-            prop_tbl_by_cut(df, "country", "norm_agg_ohe", grp_disp_name="Country"),
-        )
-    )
+    # xls_res.append(
+    #     (
+    #         "by_country_iw",
+    #         prop_tbl_by_cut(df, "country", "norm_agg_ohe", grp_disp_name="Country"),
+    #     )
+    # )
 
     # By project type
     xls_res.append(
@@ -658,14 +701,14 @@ def analyze_category_props_by_group(df):
             ),
         )
     )
-    xls_res.append(
-        (
-            "by_proj_type_iw",
-            prop_tbl_by_cut(
-                df, "project_type", "norm_agg_ohe", grp_disp_name="Project Type"
-            ),
-        )
-    )
+    # xls_res.append(
+    #     (
+    #         "by_proj_type_iw",
+    #         prop_tbl_by_cut(
+    #             df, "project_type", "norm_agg_ohe", grp_disp_name="Project Type"
+    #         ),
+    #     )
+    # )
 
     # By year
     xls_res.append(
@@ -676,14 +719,14 @@ def analyze_category_props_by_group(df):
             ).sort_index(),
         )
     )
-    xls_res.append(
-        (
-            "by_year_iw",
-            prop_tbl_by_cut(
-                df, "year", "norm_agg_ohe", grp_disp_name="Xfer year"
-            ).sort_index(),
-        )
-    )
+    # xls_res.append(
+    #     (
+    #         "by_year_iw",
+    #         prop_tbl_by_cut(
+    #             df, "year", "norm_agg_ohe", grp_disp_name="Xfer year"
+    #         ).sort_index(),
+    #     )
+    # )
 
     # By followup type (call center vs field)
     xls_res.append(
@@ -694,28 +737,28 @@ def analyze_category_props_by_group(df):
             ).sort_index(),
         )
     )
-    xls_res.append(
-        (
-            "by_flup_type_iw",
-            prop_tbl_by_cut(
-                df, "follow_up_type", "norm_agg_ohe", grp_disp_name="flup type"
-            ).sort_index(),
-        )
-    )
+    # xls_res.append(
+    #     (
+    #         "by_flup_type_iw",
+    #         prop_tbl_by_cut(
+    #             df, "follow_up_type", "norm_agg_ohe", grp_disp_name="flup type"
+    #         ).sort_index(),
+    #     )
+    # )
 
     # By gender
     by_gender = prop_tbl_by_cut(
         df, "recipient_gender", "agg_ohe", grp_disp_name="Gender"
     )
     xls_res.append(("by_gender", by_gender))
-    xls_res.append(
-        (
-            "by_gender_iw",
-            prop_tbl_by_cut(
-                df, "recipient_gender", "norm_agg_ohe", grp_disp_name="Gender"
-            ),
-        )
-    )
+    # xls_res.append(
+    #     (
+    #         "by_gender_iw",
+    #         prop_tbl_by_cut(
+    #             df, "recipient_gender", "norm_agg_ohe", grp_disp_name="Gender"
+    #         ),
+    #     )
+    # )
 
     # By age bin
     by_age = prop_tbl_by_cut(
@@ -727,19 +770,20 @@ def analyze_category_props_by_group(df):
         sort_output=False,
     )
     xls_res.append(("by_age", by_age))
-    xls_res.append(
-        (
-            "by_age_iw",
-            prop_tbl_by_cut(
-                df,
-                "age_group",
-                "norm_agg_ohe",
-                grp_disp_name="Age",
-                min_grp_cnt=None,
-                sort_output=False,
-            ),
-        )
-    )
+    # xls_res.append(
+    #     (
+    #         "by_age_iw",
+    #         prop_tbl_by_cut(
+    #             df,
+    #             "age_group",
+    #             "norm_agg_ohe",
+    #             grp_disp_name="Age",
+    #             min_grp_cnt=None,
+    #             sort_output=False,
+    #         ),
+    #     )
+    # )
+
 
 
 def demo_factor_analysis(df):

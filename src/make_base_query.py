@@ -3,7 +3,7 @@ import sqlparse
 from mappings import FLUP_TO_RES
 
 START_DT = "2019-10-01"
-END_DT = "2023-10-01"
+END_DT = "2024-05-01"
 
 # Columns to include from the transfers metrics table.
 TRANSFER_COLS = [
@@ -111,6 +111,11 @@ def mk_base_query(filename: str) -> None:
               res.Id AS res_id,
               fu.rcpnt_fu_num,
               fu.tfr_fu_num,
+              g.name as glid,
+            g.Name__c as village,
+            Parent_Geographic_Level__c as parent_geo_level_1,
+            Second_Level_Parent_Geographic_Level__c as parent_geo_level_2,
+            Third_Level_Parent_Geographic_Level__c as parent_geo_level_3,
               ROW_NUMBER() over(PARTITION BY res.Recipient__c, fu.Id
                                 ORDER BY Date_of_Follow_up__c DESC) AS res_fu_num,
             {','.join([f't.{c}' for c in TRANSFER_COLS])},
@@ -119,6 +124,8 @@ def mk_base_query(filename: str) -> None:
             {','.join([f'res.{c}' for c in RES_ONLY])}
        
        FROM prod_gold.field_metrics.transfers t
+       JOIN prod_silver.field_salesforce.recipients r on r.Id = t.recipient_id
+       JOIN prod_silver.field_salesforce.geographic_level g on g.id = r.Geographic_Level__c
        JOIN follow_up fu ON fu.Transfer__c = t.transfer_id
        LEFT JOIN research res ON fu.Recipient__c = res.Recipient__c
        AND abs(UNIX_TIMESTAMP(fu.CreatedDate) - UNIX_TIMESTAMP(res.CreatedDate)) < 60
@@ -126,6 +133,7 @@ def mk_base_query(filename: str) -> None:
          AND t.recipient_inactive_stage = 0
         AND t.transfer_created_date >= '{START_DT}'
         AND t.transfer_created_date < '{END_DT}'
+        AND t.project_name in ('Kenya Large Transfer', 'Rwanda STEP Large Transfer','Uganda Large Transfer', 'Uganda Karamoja Large Transfer','Uganda Abaru Flex Large Transfer')
     """
     query = sqlparse.format(query.strip(), reindent=True, keyword_case="upper")
 
